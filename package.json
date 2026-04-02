@@ -1,44 +1,16 @@
 {
-  "name": "buses_frontend",
+  "name": "smart_buses_monorepo",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "1.0.0",
+  "description": "Monorepo: Frontend + ms-security y futuros microservicios",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@azure/msal-browser": "^4.30.0",
-    "@azure/msal-react": "^3.0.29",
-    "@hookform/resolvers": "^5.2.2",
-    "@react-oauth/google": "^0.13.4",
-    "@tailwindcss/vite": "^4.2.2",
-    "axios": "^1.13.6",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-google-recaptcha": "^3.1.0",
-    "react-google-recaptcha-v3": "^1.11.0",
-    "react-hook-form": "^7.71.2",
-    "react-router-dom": "^7.13.1",
-    "tailwindcss": "^4.2.2",
-    "zod": "^4.3.6",
-    "zustand": "^5.0.12"
+    "dev": "concurrently --names \"FRONTEND,SECURITY\" --prefix-colors \"cyan,green\" \"npm run dev --prefix buses_frontend\" \"npm run dev:security\"",
+    "dev:frontend": "npm run dev --prefix buses_frontend",
+    "dev:security": "cd ms-security && mvnw.cmd spring-boot:run",
+    "install:all": "npm install --prefix buses_frontend",
+    "build:frontend": "npm run build --prefix buses_frontend"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
-    "@types/node": "^24.12.0",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@types/react-google-recaptcha": "^2.1.9",
-    "@vitejs/plugin-react": "^6.0.0",
-    "eslint": "^9.39.4",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.4.0",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.56.1",
-    "vite": "^8.0.0"
+    "concurrently": "^9.0.0"
   }
 }
