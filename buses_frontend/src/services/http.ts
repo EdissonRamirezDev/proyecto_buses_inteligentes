@@ -1,7 +1,7 @@
 import axios from 'axios'
 import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios'
 import { API_SECURITY_URL, API_BUSINESS_URL } from '../utils/constants'
-import { getToken, clearSession, isTokenExpired } from '../utils/tokenHelper'
+import { getToken, isTokenExpired } from '../utils/tokenHelper'
 import { useAuthStore } from '../store'
 
 

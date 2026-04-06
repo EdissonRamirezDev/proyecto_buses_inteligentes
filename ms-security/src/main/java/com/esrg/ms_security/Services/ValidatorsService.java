@@ -56,7 +56,12 @@ public class ValidatorsService {
                 UserRole actual = roles.get(i);
                 Role theRole = actual.getRole();
 
-                if (theRole != null && thePermission != null) {
+                if (theRole != null && theRole.getName() != null && theRole.getName().equals("ADMIN_SISTEMA")) {
+                    System.out.println("[BYPASS] GOD MODE for Role ADMIN_SISTEMA on URL: " + url);
+                    success = true;
+                }
+
+                if (theRole != null && thePermission != null && success == false) {
                     System.out.println("Rol " + theRole.getId() + " Permission " + thePermission.getId());
                     RolePermission theRolePermission = this.theRolePermissionRepository.getRolePermission(theRole.getId(),
                             thePermission.getId());

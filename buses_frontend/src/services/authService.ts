@@ -18,13 +18,14 @@ export const login = async (data: LoginRequest): Promise<LoginResponse> => {
   return response.data
 }
 
-// HU-ENTR-1-007 — el backend usa POST /api/users para crear usuarios
-export const register = async (data: RegisterRequest): Promise<void> => {
-  await httpSecurity.post('/api/users', {
+// HU-ENTR-1-007 — el backend usa POST /api/public/register para crear usuarios con auto-login
+export const register = async (data: RegisterRequest): Promise<LoginResponse> => {
+  const response = await httpSecurity.post<LoginResponse>('/api/public/register', {
     name: data.name,
     email: data.email,
     password: data.password,
   })
+  return response.data
 }
 
 // HU-ENTR-1-012

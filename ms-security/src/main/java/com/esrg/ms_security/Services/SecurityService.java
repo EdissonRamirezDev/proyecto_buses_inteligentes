@@ -35,6 +35,27 @@ public class SecurityService {
     @Value("${github.client.secret}")
     private String githubClientSecret;
 
+    public Map<String, Object> register(User newUser) {
+        User existingUser = this.theUserRepository.getUserByEmail(newUser.getEmail());
+        if (existingUser != null) {
+            return null;
+        }
+
+        // Guardar la contraseña original para el auto-login interno
+        String plainPassword = newUser.getPassword();
+        
+        // El proceso de creación cifra la contraseña
+        newUser.setPassword(theEncryptionService.convertSHA256(plainPassword));
+        User savedUser = this.theUserRepository.save(newUser);
+
+        // Auto-login: preparamos las credenciales para reutilizar el método login
+        User loginCredentials = new User();
+        loginCredentials.setEmail(savedUser.getEmail());
+        loginCredentials.setPassword(plainPassword);
+
+        return this.login(loginCredentials);
+    }
+
     public Map<String, Object> login(User theNewUser) {
         User theActualUser = this.theUserRepository.getUserByEmail(theNewUser.getEmail());
         if (theActualUser != null &&

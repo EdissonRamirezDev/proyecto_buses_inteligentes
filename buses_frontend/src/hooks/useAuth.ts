@@ -98,10 +98,18 @@ export const useAuth = () => {
   const handleRegister = async (data: RegisterRequest) => {
     setError('')
     try {
-      await authService.register(data)
-      navigate('/login', {
-        state: { message: 'Registro exitoso. Revisa tu email para confirmar tu cuenta.' }
-      })
+      const response = await authService.register(data)
+      
+      const loggedUser: User = response.user ?? {
+        id: '',
+        name: data.name,
+        email: data.email,
+      }
+
+      setToken(response.token)
+      setStoredUser(loggedUser)
+      login(loggedUser, response.token)
+      navigate('/dashboard', { replace: true })
     } catch (err: any) {
       const message = err.response?.data?.message
       setError(message ?? 'Error al registrarse. Intenta de nuevo.')
