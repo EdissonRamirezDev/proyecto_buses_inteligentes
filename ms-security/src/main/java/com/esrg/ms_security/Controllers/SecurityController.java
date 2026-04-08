@@ -96,4 +96,30 @@ public class SecurityController {
             return null;
         }
     }
+
+    @PostMapping("security/forgot-password")
+    public void forgotPassword(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        // Nota de Seguridad: Responderemos 200 OK inmediatamente aunque el correo no exista
+        // para prevenir ataques de enumeración de usuarios.
+        if (email != null && !email.trim().isEmpty()) {
+            this.theSecurityService.generatePasswordResetToken(email);
+        }
+    }
+
+    @PostMapping("security/reset-password")
+    public Map<String, String> resetPassword(@RequestBody Map<String, String> body,
+                                             final HttpServletResponse response) throws IOException {
+        String token = body.get("token");
+        String password = body.get("password");
+        
+        Map<String, String> error = this.theSecurityService.resetPasswordWithToken(token, password);
+        
+        if (error != null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            return Map.of("message", error.get("error"));
+        }
+        
+        return Map.of("message", "Contraseña actualizada exitosamente");
+    }
 }

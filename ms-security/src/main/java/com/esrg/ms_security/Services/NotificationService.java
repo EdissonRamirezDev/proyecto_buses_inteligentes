@@ -146,6 +146,45 @@ public class NotificationService {
         sendEmail(user.getEmail(), subject, body);
     }
 
+    /**
+     * Envía un enlace para la recuperación de contraseña.
+     * @param user El usuario que solicitó el restablecimiento.
+     * @param token El token seguro para el restablecimiento.
+     */
+    public void sendPasswordRecoveryEmail(User user, String token) {
+        String subject = "Recuperación de Contraseña - Smart Buses";
+        String verificationLink = "http://localhost:5173/reset-password?token=" + token;
+        
+        String htmlTemplate = """
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 40px 20px;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                    <div style="background-color: #4f46e5; padding: 30px; text-align: center;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: bold; letter-spacing: 1px;">Smart Buses</h1>
+                        <p style="color: #e0e7ff; margin-top: 10px; font-size: 16px;">Soporte T&eacute;cnico</p>
+                    </div>
+                    <div style="padding: 40px 40px;">
+                        <h2 style="color: #1f2937; margin-top: 0; font-size: 22px;">Hola, %s</h2>
+                        <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Hemos recibido una solicitud para restablecer la contrase&ntilde;a de tu cuenta. Haz clic en el bot&oacute;n debajo para crear una nueva contrase&ntilde;a:</p>
+                        
+                        <div style="text-align: center; margin: 40px 0;">
+                            <a href="%s" style="background-color: #4f46e5; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">Restablecer mi Contrase&ntilde;a</a>
+                        </div>
+                        
+                        <p style="color: #4b5563; font-size: 15px; line-height: 1.6;">Este enlace <strong style="color:#ef4444;">expirar&aacute; en 15 minutos</strong> por razones de seguridad.</p>
+                        <p style="color: #6b7280; font-size: 14px; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px;">Si t&uacute; no solicitaste este cambio, simplemente ignora este correo. Tu cuenta actual seguir&aacute; siendo segura.</p>
+                    </div>
+                    <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+                        <p style="color: #9ca3af; font-size: 13px; margin: 0;">&copy; 2026 Smart Buses. Sistema de Recuperaci&oacute;n Autom&aacute;tico.</p>
+                    </div>
+                </div>
+            </div>
+            """;
+            
+        String body = String.format(htmlTemplate, user.getName(), verificationLink);
+        
+        sendEmail(user.getEmail(), subject, body);
+    }
+
     private void sendEmail(String recipient, String subject, String bodyHtml) {
         try {
             String url = notificationsUrl + "/send-email";

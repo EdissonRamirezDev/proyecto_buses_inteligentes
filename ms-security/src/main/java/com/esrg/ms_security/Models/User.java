@@ -17,6 +17,10 @@ public class User {
     private String twoFactorCode;
     private java.util.Date twoFactorExpiration;
     private Integer twoFactorAttempts;
+    
+    // Recuperacion de Contraseña
+    private String resetPasswordToken;
+    private java.util.Date resetPasswordExpiration;
 
     public User(String name, String email, String password) {
         this.name = name;

@@ -175,6 +175,46 @@ public class SecurityService {
         return true;
     }
 
+    public void generatePasswordResetToken(String email) {
+        User user = this.theUserRepository.getUserByEmail(email);
+        if (user != null) {
+            String token = java.util.UUID.randomUUID().toString();
+            user.setResetPasswordToken(token);
+            
+            Calendar cal = Calendar.getInstance();
+            cal.add(Calendar.MINUTE, 15);
+            user.setResetPasswordExpiration(cal.getTime());
+            
+            this.theUserRepository.save(user);
+            
+            this.theNotificationService.sendPasswordRecoveryEmail(user, token);
+        }
+        // Retornamos void para prevenir ataques de enumeración (no revelamos si el email existe o no).
+    }
+
+    public Map<String, String> resetPasswordWithToken(String token, String newPassword) {
+        if (token == null || token.trim().isEmpty()) {
+            return Map.of("error", "Token inválido");
+        }
+
+        User user = this.theUserRepository.getUserByResetPasswordToken(token);
+        
+        if (user == null || user.getResetPasswordExpiration() == null) {
+            return Map.of("error", "El enlace es inválido o ya fue utilizado.");
+        }
+        
+        if (user.getResetPasswordExpiration().before(new Date())) {
+            return Map.of("error", "El enlace ha expirado. Por favor solicita uno nuevo.");
+        }
+        
+        user.setPassword(this.theEncryptionService.convertSHA256(newPassword));
+        user.setResetPasswordToken(null);
+        user.setResetPasswordExpiration(null);
+        this.theUserRepository.save(user);
+        
+        return null; // El null significa éxito total sin errores
+    }
+
 
     // Devuelve token + usuario completo para que el frontend muestre el nombre real
     public Map<String, Object> oauthLoginWithUser(String provider, String token) {
