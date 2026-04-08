@@ -9,6 +9,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
 
@@ -16,6 +17,11 @@ import java.util.Arrays;
 public class WebConfig implements WebMvcConfigurer {
     @Autowired
     private SecurityInterceptor securityInterceptor;
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
 
     @Bean
     public CorsFilter corsFilter() {

@@ -16,6 +16,8 @@ public class UserRoleService {
     private UserRepository theUserRepository;
     @Autowired
     private RoleRepository theRoleRepository;
+    @Autowired
+    private NotificationService theNotificationService;
 
     public List<UserRole> find(){
         return this.theUserRoleRepository.findAll();
@@ -66,6 +68,10 @@ public class UserRoleService {
             theUserRole.setRole(theRole);
 
             this.theUserRoleRepository.save(theUserRole);
+            
+            // Alerta de seguridad: Rol asignado
+            this.theNotificationService.sendSecurityAlert(theUser, theRole.getName(), "Se le ha asignado un nuevo rol");
+            
             return true;
         }else{
             return false;
@@ -75,7 +81,15 @@ public class UserRoleService {
     public void delete(String id){
         UserRole theUserRole = this.theUserRoleRepository.findById(id).orElse(null);
         if(theUserRole != null){
+            User theUser = theUserRole.getUser();
+            Role theRole = theUserRole.getRole();
+            
             this.theUserRoleRepository.delete(theUserRole);
+            
+            // Alerta de seguridad: Rol eliminado
+            if (theUser != null && theRole != null) {
+                this.theNotificationService.sendSecurityAlert(theUser, theRole.getName(), "Eliminación de rol existente");
+            }
         }
     }
 }

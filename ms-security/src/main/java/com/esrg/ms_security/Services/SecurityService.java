@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+// import java.util.stream.Collectors;
 
 @Service
 public class SecurityService {
@@ -27,6 +27,10 @@ public class SecurityService {
     private JwtService theJwtService;
     @Autowired
     private UserRoleRepository theUserRoleRepository;
+    @Autowired
+    private NotificationService theNotificationService;
+    @Autowired
+    private RestTemplate restTemplate;
 
     // Lee las variables del application.properties
     @Value("${github.client.id}")
@@ -52,6 +56,9 @@ public class SecurityService {
         User loginCredentials = new User();
         loginCredentials.setEmail(savedUser.getEmail());
         loginCredentials.setPassword(plainPassword);
+
+        // Notificar al usuario por correo
+        this.theNotificationService.sendRegistrationEmail(savedUser);
 
         return this.login(loginCredentials);
     }
@@ -155,7 +162,6 @@ public class SecurityService {
 
     private Map<String, Object> getUserInfoFromProvider(String provider, String token) {
         try {
-            RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
             String url;
             String effectiveToken = token;
