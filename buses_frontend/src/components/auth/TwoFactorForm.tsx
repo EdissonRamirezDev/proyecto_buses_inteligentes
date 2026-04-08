@@ -195,14 +195,14 @@ const TwoFactorForm = ({ email }: TwoFactorFormProps) => {
           </p>
         )}
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          ¿No recibiste el código?{' '}
+          ¿No recibió el código?{' '}
           <button
             type="button"
             onClick={handleResend}
             disabled={isResending}
             className="text-blue-600 dark:text-blue-400 hover:underline font-medium disabled:opacity-50"
           >
-            {isResending ? 'Reenviando...' : 'Reenviar código'}
+            {isResending ? 'Reenviando...' : 'Revisar spam o reenviar'}
           </button>
         </p>
       </div>

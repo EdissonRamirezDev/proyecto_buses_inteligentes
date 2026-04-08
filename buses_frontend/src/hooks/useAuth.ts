@@ -100,6 +100,12 @@ export const useAuth = () => {
     try {
       const response = await authService.register(data)
       
+      if (response.requires2FA) {
+        setRequires2FA(true, data.email)
+        navigate('/2fa', { state: { email: data.email } })
+        return
+      }
+      
       const loggedUser: User = response.user ?? {
         id: '',
         name: data.name,

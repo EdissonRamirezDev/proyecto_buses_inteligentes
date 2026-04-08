@@ -12,6 +12,11 @@ public class User {
     private String name;
     private String email;
     private String password;
+    
+    // Autenticacion de Dos Factores (2FA)
+    private String twoFactorCode;
+    private java.util.Date twoFactorExpiration;
+    private Integer twoFactorAttempts;
 
     public User(String name, String email, String password) {
         this.name = name;

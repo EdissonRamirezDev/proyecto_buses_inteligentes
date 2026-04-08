@@ -61,4 +61,39 @@ public class SecurityController {
 
         return theResponse;
     }
+
+    @PostMapping("security/2fa/verify")
+    public HashMap<String, Object> verifyTwoFactor(@RequestBody Map<String, String> body,
+                                                   final HttpServletResponse response) throws IOException {
+        String email = body.get("email");
+        String code = body.get("code");
+
+        Map<String, Object> result = this.theSecurityService.verifyTwoFactor(email, code);
+
+        if (result == null) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+            return null;
+        }
+
+        if (result.containsKey("error")) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return new HashMap<>(result);
+        }
+
+        return new HashMap<>(result);
+    }
+
+    @PostMapping("security/2fa/resend")
+    public Map<String, String> resendTwoFactorCode(@RequestBody Map<String, String> body,
+                                                   final HttpServletResponse response) throws IOException {
+        String email = body.get("email");
+        boolean success = this.theSecurityService.resendTwoFactorCode(email);
+
+        if (success) {
+            return Map.of("message", "Código reenviado exitosamente");
+        } else {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Usuario no encontrado");
+            return null;
+        }
+    }
 }

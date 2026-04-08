@@ -106,6 +106,46 @@ public class NotificationService {
         sendEmail(user.getEmail(), subject, body);
     }
 
+    /**
+     * Envía un código de autenticación de dos factores (2FA).
+     * @param user El usuario que intenta acceder.
+     * @param code El código de 6 dígitos generado.
+     */
+    public void sendTwoFactorCode(User user, String code) {
+        String subject = "Código de Seguridad (2FA) - Smart Buses";
+        
+        String htmlTemplate = """
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 40px 20px;">
+                <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                    <div style="background-color: #3b82f6; padding: 30px; text-align: center;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: bold; letter-spacing: 1px;">Smart Buses</h1>
+                        <p style="color: #e0f2fe; margin-top: 10px; font-size: 16px;">Verificaci&oacute;n de Identidad</p>
+                    </div>
+                    <div style="padding: 40px 40px;">
+                        <h2 style="color: #1f2937; margin-top: 0; font-size: 22px;">Hola, %s</h2>
+                        <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Has solicitado acceder a tu cuenta. Para continuar, por favor ingresa el siguiente c&oacute;digo de verificaci&oacute;n de 6 d&iacute;gitos:</p>
+                        
+                        <div style="text-align: center; margin: 35px 0;">
+                            <div style="background-color: #f8fafc; border: 2px dashed #94a3b8; border-radius: 8px; padding: 20px; display: inline-block;">
+                                <span style="font-family: monospace; font-size: 36px; font-weight: bold; letter-spacing: 6px; color: #1e293b;">%s</span>
+                            </div>
+                        </div>
+                        
+                        <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">Este c&oacute;digo <strong>expira en 5 minutos</strong> y solo puede ser utilizado una vez.</p>
+                        <p style="color: #ef4444; font-size: 14px; margin-top: 30px;"><b>Nota importante:</b> Nunca compartas este c&oacute;digo con nadie. Si no intentaste iniciar sesi&oacute;n, puedes ignorar este mensaje de forma segura.</p>
+                    </div>
+                    <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+                        <p style="color: #9ca3af; font-size: 13px; margin: 0;">&copy; 2026 Smart Buses. Sistema de Seguridad Autom&aacute;tico.</p>
+                    </div>
+                </div>
+            </div>
+            """;
+            
+        String body = String.format(htmlTemplate, user.getName(), code);
+        
+        sendEmail(user.getEmail(), subject, body);
+    }
+
     private void sendEmail(String recipient, String subject, String bodyHtml) {
         try {
             String url = notificationsUrl + "/send-email";

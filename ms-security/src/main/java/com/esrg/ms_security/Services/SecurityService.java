@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.Calendar;
+import java.util.Date;
 // import java.util.stream.Collectors;
 
 @Service
@@ -63,41 +66,115 @@ public class SecurityService {
         return this.login(loginCredentials);
     }
 
+    // Helper class to generate the final token response
+    private Map<String, Object> generateAuthResponse(User theActualUser) {
+        String token = theJwtService.generateToken(theActualUser);
+        
+        List<UserRole> userRoles = this.theUserRoleRepository.getRolesByUser(theActualUser.getId());
+        List<Map<String, Object>> rolesList = new ArrayList<>();
+        if (userRoles != null) {
+            for (UserRole ur : userRoles) {
+                if (ur.getRole() != null) {
+                    Map<String, Object> rMap = new HashMap<>();
+                    rMap.put("id", ur.getRole().getId());
+                    rMap.put("name", ur.getRole().getName());
+                    rolesList.add(rMap);
+                }
+            }
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", token);
+        
+        Map<String, Object> uMap = new HashMap<>();
+        uMap.put("id", theActualUser.getId());
+        uMap.put("name", theActualUser.getName());
+        uMap.put("email", theActualUser.getEmail());
+        uMap.put("roles", rolesList);
+        
+        result.put("user", uMap);
+        return result;
+    }
+
     public Map<String, Object> login(User theNewUser) {
         User theActualUser = this.theUserRepository.getUserByEmail(theNewUser.getEmail());
         if (theActualUser != null &&
                 theActualUser.getPassword().equals(theEncryptionService.convertSHA256(theNewUser.getPassword()))) {
-            String token = theJwtService.generateToken(theActualUser);
             
-            // Fetch roles and map them explicitly to avoid lazy loading issues in the response
-            List<UserRole> userRoles = this.theUserRoleRepository.getRolesByUser(theActualUser.getId());
-            List<Map<String, Object>> rolesList = new ArrayList<>();
-            if (userRoles != null) {
-                for (UserRole ur : userRoles) {
-                    if (ur.getRole() != null) {
-                        Map<String, Object> rMap = new HashMap<>();
-                        rMap.put("id", ur.getRole().getId());
-                        rMap.put("name", ur.getRole().getName());
-                        rolesList.add(rMap);
-                    }
-                }
-            }
+            // Generar código 2FA
+            String twoFactorCode = String.format("%06d", new Random().nextInt(1000000));
+            theActualUser.setTwoFactorCode(twoFactorCode);
+            theActualUser.setTwoFactorAttempts(3);
+            
+            Calendar cal = Calendar.getInstance();
+            cal.add(Calendar.MINUTE, 5);
+            theActualUser.setTwoFactorExpiration(cal.getTime());
+            
+            this.theUserRepository.save(theActualUser);
+            this.theNotificationService.sendTwoFactorCode(theActualUser, twoFactorCode);
             
             Map<String, Object> result = new HashMap<>();
-            result.put("token", token);
-            
-            Map<String, Object> uMap = new HashMap<>();
-            uMap.put("id", theActualUser.getId());
-            uMap.put("name", theActualUser.getName());
-            uMap.put("email", theActualUser.getEmail());
-            uMap.put("roles", rolesList);
-            
-            result.put("user", uMap);
+            result.put("requires2FA", true);
+            result.put("email", theActualUser.getEmail());
             return result;
         } else {
             return null;
         }
     }
+
+    public Map<String, Object> verifyTwoFactor(String email, String code) {
+        User user = this.theUserRepository.getUserByEmail(email);
+        if (user == null || user.getTwoFactorCode() == null) {
+            return null;
+        }
+        
+        if (user.getTwoFactorAttempts() != null && user.getTwoFactorAttempts() <= 0) {
+            return Map.of("error", "locked");
+        }
+        
+        if (user.getTwoFactorExpiration() == null || user.getTwoFactorExpiration().before(new Date())) {
+            return Map.of("error", "expired");
+        }
+        
+        if (!code.equals(user.getTwoFactorCode())) {
+            int remaining = user.getTwoFactorAttempts() == null ? 0 : user.getTwoFactorAttempts() - 1;
+            user.setTwoFactorAttempts(remaining);
+            if (remaining <= 0) {
+                user.setTwoFactorCode(null);
+                user.setTwoFactorExpiration(null);
+            }
+            this.theUserRepository.save(user);
+            return Map.of("error", "invalid", "attemptsLeft", remaining);
+        }
+        
+        // Success
+        user.setTwoFactorCode(null);
+        user.setTwoFactorExpiration(null);
+        user.setTwoFactorAttempts(0);
+        this.theUserRepository.save(user);
+        
+        return generateAuthResponse(user);
+    }
+
+    public boolean resendTwoFactorCode(String email) {
+        User user = this.theUserRepository.getUserByEmail(email);
+        if (user == null) {
+            return false;
+        }
+
+        String twoFactorCode = String.format("%06d", new Random().nextInt(1000000));
+        user.setTwoFactorCode(twoFactorCode);
+        user.setTwoFactorAttempts(3);
+        
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.MINUTE, 5);
+        user.setTwoFactorExpiration(cal.getTime());
+        
+        this.theUserRepository.save(user);
+        this.theNotificationService.sendTwoFactorCode(user, twoFactorCode);
+        return true;
+    }
+
 
     // Devuelve token + usuario completo para que el frontend muestre el nombre real
     public Map<String, Object> oauthLoginWithUser(String provider, String token) {
@@ -127,34 +204,7 @@ public class SecurityService {
                 savedUser = this.theUserRepository.save(newUser);
             }
 
-            String jwtToken = this.theJwtService.generateToken(savedUser);
-
-            // Fetch roles for OAuth user as well
-            List<UserRole> userRoles = this.theUserRoleRepository.getRolesByUser(savedUser.getId());
-            List<Map<String, Object>> rolesList = new ArrayList<>();
-            if (userRoles != null) {
-                for (UserRole ur : userRoles) {
-                    if (ur.getRole() != null) {
-                        Map<String, Object> rMap = new HashMap<>();
-                        rMap.put("id", ur.getRole().getId());
-                        rMap.put("name", ur.getRole().getName());
-                        rolesList.add(rMap);
-                    }
-                }
-            }
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("token", jwtToken);
-            
-            Map<String, Object> uMap = new HashMap<>();
-            uMap.put("id", savedUser.getId());
-            uMap.put("name", savedUser.getName());
-            uMap.put("email", savedUser.getEmail());
-            uMap.put("roles", rolesList);
-            
-            result.put("user", uMap);
-
-            return result;
+            return generateAuthResponse(savedUser);
         } catch (Exception e) {
             return null;
         }
