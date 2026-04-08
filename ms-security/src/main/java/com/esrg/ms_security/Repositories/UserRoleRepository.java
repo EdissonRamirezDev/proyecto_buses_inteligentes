@@ -21,4 +21,10 @@ public interface UserRoleRepository extends MongoRepository<UserRole, String> {
      * Método alternativo utilizando la nomenclatura estándar de Spring Data.
      */
     List<UserRole> findByUserId(String userId);
+
+    /**
+     * Cuenta cuántos usuarios tienen asignado un rol específico.
+     */
+    @Query(value = "{ 'role.$id' : ObjectId(?0) }", count = true)
+    long countByRoleId(String roleId);
 }

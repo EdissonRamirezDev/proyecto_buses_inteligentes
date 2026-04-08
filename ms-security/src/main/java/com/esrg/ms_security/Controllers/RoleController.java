@@ -25,6 +25,12 @@ public class RoleController {
         return this.theRoleService.findById(id);
     }
 
+    @GetMapping("{id}/usage-count")
+    public java.util.Map<String, Long> getUsageCount(@PathVariable String id) {
+        long count = this.theRoleService.countUsersWithRole(id);
+        return java.util.Map.of("count", count);
+    }
+
     @PostMapping
     public Role create(@RequestBody Role newRole) {
         return this.theRoleService.create(newRole);

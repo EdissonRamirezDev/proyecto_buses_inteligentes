@@ -20,6 +20,8 @@ const RoleList = ({ onEdit, refreshTrigger }: RoleListProps) => {
   const [error, setError] = useState('')
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [roleUsageCount, setRoleUsageCount] = useState<number>(0)
+  const [loadingUsage, setLoadingUsage] = useState(false)
 
   const loadRoles = async () => {
     try {
@@ -45,10 +47,23 @@ const RoleList = ({ onEdit, refreshTrigger }: RoleListProps) => {
       await loadRoles()
     } catch (err: any) {
       const message = err.response?.data?.message
-      setError(message ?? 'No se puede eliminar el rol porque tiene usuarios asignados.')
+      setError(message ?? 'No se puede eliminar el rol porque tiene dependencias.')
     } finally {
       setIsDeleting(false)
       setRoleToDelete(null)
+    }
+  }
+
+  const confirmDelete = async (role: Role) => {
+    setRoleToDelete(role)
+    setLoadingUsage(true)
+    try {
+      const count = await roleService.getRoleUsageCount(role.id)
+      setRoleUsageCount(count)
+    } catch {
+      setRoleUsageCount(0)
+    } finally {
+      setLoadingUsage(false)
     }
   }
 
@@ -107,7 +122,7 @@ const RoleList = ({ onEdit, refreshTrigger }: RoleListProps) => {
                     <Button
                       variant="danger"
                       size="sm"
-                      onClick={() => setRoleToDelete(role)}
+                      onClick={() => confirmDelete(role)}
                     >
                       Eliminar
                     </Button>
@@ -128,13 +143,27 @@ const RoleList = ({ onEdit, refreshTrigger }: RoleListProps) => {
         onConfirm={handleDelete}
         isConfirmLoading={isDeleting}
       >
-        <p className="text-gray-600 dark:text-gray-400">
-          ¿Estás seguro de eliminar el rol{' '}
-          <span className="font-semibold text-gray-900 dark:text-gray-100">
-            {roleToDelete?.name}
-          </span>
-          ? Esta acción no se puede deshacer.
-        </p>
+        {loadingUsage ? (
+          <div className="flex justify-center my-4">
+            <LoadingSpinner text="Verificando dependencias..." />
+          </div>
+        ) : (
+          <p className="text-gray-600 dark:text-gray-400">
+            ¿Estás seguro que quieres eliminar el rol{' '}
+            <span className="font-semibold text-gray-900 dark:text-gray-100">
+              {roleToDelete?.name}
+            </span>? 
+            {roleUsageCount > 0 ? (
+              <span className="block mt-2 font-medium text-red-600 dark:text-red-400">
+                Este rol está asignado a {roleUsageCount} {roleUsageCount === 1 ? 'usuario' : 'usuarios'}.
+              </span>
+            ) : (
+              <span className="block mt-2">
+                Esta acción no se puede deshacer.
+              </span>
+            )}
+          </p>
+        )}
       </Modal>
     </>
   )

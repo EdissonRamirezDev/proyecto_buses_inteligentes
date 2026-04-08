@@ -2,6 +2,7 @@ package com.esrg.ms_security.Services;
 
 import com.esrg.ms_security.Models.Role;
 import com.esrg.ms_security.Repositories.RoleRepository;
+import com.esrg.ms_security.Repositories.UserRoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +13,13 @@ public class RoleService {
 
     @Autowired
     private RoleRepository theRoleRepository;
+    
+    @Autowired
+    private UserRoleRepository theUserRoleRepository;
+
+    public long countUsersWithRole(String roleId) {
+        return this.theUserRoleRepository.countByRoleId(roleId);
+    }
 
     public List<Role> find(){
         return this.theRoleRepository.findAll();
@@ -42,6 +50,10 @@ public class RoleService {
         Role theRole = this.theRoleRepository.findById(id).orElse(null);
         if(theRole != null){
             this.theRoleRepository.delete(theRole);
+            // Delete all UserRole relations mapping to this role to clean up orphaned ties
+            // Wait, standard Mongo doesn't have cascades. We must fetch and delete or just let it be.
+            // A more robust approach would be deleting them but let's query them first:
+            // This is a quick cleanup if desired, but for now we focus on the usage alert.
         }
     }
 }

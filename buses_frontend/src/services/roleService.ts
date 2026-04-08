@@ -25,3 +25,8 @@ export const updateRole = async (id: string, data: Partial<Role>): Promise<Role>
 export const deleteRole = async (id: string): Promise<void> => {
   await httpSecurity.delete(`/api/roles/${id}`)
 }
+
+export const getRoleUsageCount = async (id: string): Promise<number> => {
+  const response = await httpSecurity.get<{ count: number }>(`/api/roles/${id}/usage-count`)
+  return response.data.count
+}

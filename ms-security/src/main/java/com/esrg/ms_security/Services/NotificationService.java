@@ -68,7 +68,7 @@ public class NotificationService {
      * @param action La acción realizada (Asignación/Eliminación).
      */
     public void sendSecurityAlert(User user, String roleName, String action) {
-        String subject = "⚠️ Alerta de Seguridad: Cambio en tus privilegios";
+        String subject = "Alerta de Seguridad: Cambio en tus privilegios";
         
         String htmlTemplate = """
             <div style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 40px 20px;">
