@@ -86,7 +86,7 @@ public class ValidatorsService {
     }
 
     /**
-     * Extrae al usuario del token de autorización (Punto 3 del BPMN).
+     * Extrae al usuario del token de autorización
      */
     public User getUser(final HttpServletRequest request) {
         User theUser = null;
@@ -97,6 +97,17 @@ public class ValidatorsService {
             if (theUserFromToken != null) {
                 theUser = this.theUserRepository.findById(theUserFromToken.getId())
                         .orElse(null);
+                
+                // Token Versioning Validation
+                if (theUser != null) {
+                    Long dbVersion = theUser.getTokenVersion() != null ? theUser.getTokenVersion() : 1L;
+                    Long jwtVersion = jwtService.getTokenVersion(token);
+                    
+                    if (!dbVersion.equals(jwtVersion)) {
+                        System.out.println("[SECURITY] Token Version Mismatch for user " + theUser.getEmail() + ". Forcing logout.");
+                        return null; // Rechazar token inmediatamente
+                    }
+                }
             }
         }
         return theUser;

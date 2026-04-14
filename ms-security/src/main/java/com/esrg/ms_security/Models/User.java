@@ -24,6 +24,8 @@ public class User {
     private String resetPasswordToken;
     private java.util.Date resetPasswordExpiration;
     
+    // Invalidación de tokens (Token Versioning)
+    private Long tokenVersion = 1L;
     // Auth configuration
     private Boolean hasPassword;
     private Boolean profileComplete;
