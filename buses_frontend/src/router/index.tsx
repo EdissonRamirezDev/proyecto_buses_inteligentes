@@ -8,9 +8,11 @@ import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage'
 import TwoFactorPage from '../pages/auth/TwoFactorPage'
 import OAuthCallbackPage from '../pages/auth/OAuthCallbackPage'
+import CompleteProfilePage from '../pages/auth/CompleteProfilePage'
 
 // Pages - Admin
 import DashboardPage from '../pages/admin/DashboardPage'
+import ProfilePage from '../pages/admin/ProfilePage'
 import RolesPage from '../pages/admin/RolesPage'
 import PermissionsPage from '../pages/admin/PermissionsPage'
 import UsersPage from '../pages/admin/UsersPage'
@@ -34,6 +36,8 @@ const AppRouter = () => {
       {/* ── Rutas protegidas: cualquier usuario autenticado ── */}
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/complete-profile" element={<CompleteProfilePage />} />
         <Route path="/admin/roles" element={<RolesPage />} />
         <Route path="/admin/permissions" element={<PermissionsPage />} />
         <Route path="/admin/users" element={<UsersPage />} />

@@ -10,6 +10,7 @@ import Button from '../../components/common/Button'
  */
 const DashboardPage = () => {
   const { user, handleLogout } = useAuth()
+  const navigate = useNavigate()
   const roles = user?.roles?.map(r => r.name.toUpperCase()) || []
   const isAdmin = roles.includes('ADMIN_SISTEMA') || roles.includes('ADMIN')
   const isConductor = roles.includes('CONDUCTOR')
@@ -43,6 +44,13 @@ const DashboardPage = () => {
                   ))}
                 </div>
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/profile')}
+              >
+                Mi perfil
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
