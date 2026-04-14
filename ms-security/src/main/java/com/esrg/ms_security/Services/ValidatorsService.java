@@ -47,6 +47,15 @@ public class ValidatorsService {
             url = url.replaceAll("[0-9a-fA-F]{24}|\\d+", "?");
             System.out.println("URL " + url + " metodo " + method);
 
+            // Bypasses para gestión de cuenta propia (OAuth y completado de perfil)
+            // Se permite si el usuario está autenticado (theUser != null)
+            if (url.equals("/api/users/?/complete-profile") || 
+                url.equals("/api/users/?/oauth/link") ||
+                url.matches("/api/users/\\?/oauth/\\w+")) {
+                System.out.println("[BYPASS] Self-management access for: " + url);
+                return true;
+            }
+
             Permission thePermission = this.thePermissionRepository.getPermission(url, method);
 
             List<UserRole> roles = this.theUserRoleRepository.getRolesByUser(theUser.getId());

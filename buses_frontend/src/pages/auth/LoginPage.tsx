@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import LoginForm from '../../components/auth/LoginForm'
 import OAuthButtons from '../../components/auth/OAuthButtons'
@@ -15,10 +15,16 @@ import TwoFactorForm from '../../components/auth/TwoFactorForm'
 const LoginPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const { isAuthenticated, requires2FA } = useAuth()
 
   // Mensaje de éxito que viene desde RegisterPage o ResetPasswordPage
   const successMessage = location.state?.message as string | undefined
+
+  // Mensaje de error por sesión expirada o inválida
+  const errorFromUrl = searchParams.get('error') === 'expired' ? 'Sesión expirada o inválida' : null
+  const errorFromState = location.state?.error as string | undefined
+  const errorMessage = errorFromUrl || errorFromState
 
   // Si ya está autenticado, redirige al dashboard
   useEffect(() => {
@@ -56,6 +62,15 @@ const LoginPage = () => {
             <div className="mb-6 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
               <p className="text-sm text-green-600 dark:text-green-400">
                 {successMessage}
+              </p>
+            </div>
+          )}
+
+          {/* Mensaje de error (sesión expirada o acceso denegado) */}
+          {errorMessage && (
+            <div className="mb-6 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+              <p className="text-sm text-red-600 dark:text-red-400">
+                {errorMessage}
               </p>
             </div>
           )}

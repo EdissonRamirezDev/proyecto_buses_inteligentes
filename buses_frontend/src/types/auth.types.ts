@@ -40,6 +40,9 @@ export interface User {
   email: string
   password?: string  // opcional — nunca se muestra en el frontend
   roles?: Role[]     // no viene del backend, lo construimos en el frontend
+  linkedProviders?: string[]
+  hasPassword?: boolean
+  profileComplete?: boolean
 }
 
 export interface OAuthProvider {

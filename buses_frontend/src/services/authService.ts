@@ -56,3 +56,20 @@ export const oauthLogin = async (data: OAuthProvider): Promise<LoginResponse> =>
 export const logout = async (): Promise<void> => {
   await httpSecurity.post('/api/public/security/logout')
 }
+
+// OAuth provider linking
+export const linkOAuthProvider = async (userId: string, provider: string, token: string): Promise<{ message?: string; error?: string }> => {
+  const response = await httpSecurity.post(`/api/users/${userId}/oauth/link`, { provider, token })
+  return response.data
+}
+
+export const unlinkOAuthProvider = async (userId: string, provider: string): Promise<{ message?: string; error?: string }> => {
+  const response = await httpSecurity.delete(`/api/users/${userId}/oauth/${provider}`)
+  return response.data
+}
+
+// Profile completion (citizen address requirement)
+export const completeProfile = async (userId: string, data: { address: string; phone?: string }): Promise<{ message?: string; error?: string; profileComplete?: boolean }> => {
+  const response = await httpSecurity.post(`/api/users/${userId}/complete-profile`, data)
+  return response.data
+}
