@@ -67,6 +67,11 @@ public class UserRoleService {
             theUserRole.setUser(theUser);
             theUserRole.setRole(theRole);
 
+            // Invalidating existing sessions
+            Long currentVersion = theUser.getTokenVersion() != null ? theUser.getTokenVersion() : 1L;
+            theUser.setTokenVersion(currentVersion + 1);
+            this.theUserRepository.save(theUser);
+
             this.theUserRoleRepository.save(theUserRole);
             
             // Alerta de seguridad: Rol asignado
@@ -85,6 +90,13 @@ public class UserRoleService {
             Role theRole = theUserRole.getRole();
             
             this.theUserRoleRepository.delete(theUserRole);
+            
+            if (theUser != null) {
+                // Invalidating existing sessions
+                Long currentVersion = theUser.getTokenVersion() != null ? theUser.getTokenVersion() : 1L;
+                theUser.setTokenVersion(currentVersion + 1);
+                this.theUserRepository.save(theUser);
+            }
             
             // Alerta de seguridad: Rol eliminado
             if (theUser != null && theRole != null) {

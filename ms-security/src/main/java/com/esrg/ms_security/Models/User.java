@@ -21,6 +21,9 @@ public class User {
     // Recuperacion de Contraseña
     private String resetPasswordToken;
     private java.util.Date resetPasswordExpiration;
+    
+    // Invalidación de tokens (Token Versioning)
+    private Long tokenVersion = 1L;
 
     public User(String name, String email, String password) {
         this.name = name;

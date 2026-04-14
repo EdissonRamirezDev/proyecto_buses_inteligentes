@@ -38,6 +38,7 @@ public class JwtService {
         claims.put("id", theUser.getId());
         claims.put("name", theUser.getName());
         claims.put("email", theUser.getEmail());
+        claims.put("tokenVersion", theUser.getTokenVersion() != null ? theUser.getTokenVersion() : 1L);
 
         return Jwts.builder()
                 .setClaims(claims)
@@ -90,5 +91,20 @@ public class JwtService {
         }
     }
 
-
+    public Long getTokenVersion(String token) {
+        try {
+            Jws<Claims> claimsJws = Jwts.parserBuilder()
+                    .setSigningKey(secretKey)
+                    .build()
+                    .parseClaimsJws(token);
+            
+            Object version = claimsJws.getBody().get("tokenVersion");
+            if (version instanceof Number) {
+                return ((Number) version).longValue();
+            }
+            return 1L;
+        } catch (Exception e) {
+            return 1L;
+        }
+    }
 }
