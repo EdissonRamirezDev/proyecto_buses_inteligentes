@@ -4,6 +4,8 @@ import com.esrg.ms_security.Models.User;
 import com.esrg.ms_security.Models.UserRole;
 import com.esrg.ms_security.Repositories.UserRepository;
 import com.esrg.ms_security.Repositories.UserRoleRepository;
+import com.esrg.ms_security.Repositories.RoleRepository;
+import com.esrg.ms_security.Models.Role;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,8 @@ public class SecurityService {
     @Autowired
     private UserRoleRepository theUserRoleRepository;
     @Autowired
+    private RoleRepository theRoleRepository;
+    @Autowired
     private NotificationService theNotificationService;
     @Autowired
     private RestTemplate restTemplate;
@@ -56,6 +60,15 @@ public class SecurityService {
         newUser.setHasPassword(true);
         newUser.setProfileComplete(false);
         User savedUser = this.theUserRepository.save(newUser);
+
+        // Asignar rol CIUDADANO por defecto para activar el flujo de perfil completo
+        Role citizenRole = this.theRoleRepository.getRoleByName("CIUDADANO");
+        if (citizenRole != null) {
+            UserRole userRole = new UserRole();
+            userRole.setUser(savedUser);
+            userRole.setRole(citizenRole);
+            this.theUserRoleRepository.save(userRole);
+        }
 
         // Auto-login: preparamos las credenciales para reutilizar el método login
         User loginCredentials = new User();
@@ -263,6 +276,15 @@ public class SecurityService {
                 providers.add(provider);
                 newUser.setLinkedProviders(providers);
                 savedUser = this.theUserRepository.save(newUser);
+                
+                // Asignar rol CIUDADANO por defecto para activar el flujo de perfil completo
+                Role citizenRole = this.theRoleRepository.getRoleByName("CIUDADANO");
+                if (citizenRole != null) {
+                    UserRole userRole = new UserRole();
+                    userRole.setUser(savedUser);
+                    userRole.setRole(citizenRole);
+                    this.theUserRoleRepository.save(userRole);
+                }
             }
 
             return generateAuthResponse(savedUser);

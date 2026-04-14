@@ -5,6 +5,7 @@ import type { User } from '../../types/user.types'
 import type { UserRole } from '../../types/userRole.types'
 import Button from '../common/Button'
 import Input from '../common/Input'
+import Modal from '../common/Modal'
 import LoadingSpinner from '../common/LoadingSpinner'
 
 interface UserListProps {
@@ -28,6 +29,8 @@ const UserList = ({ onAssignRoles, onEdit, refreshTrigger }: UserListProps) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
@@ -62,6 +65,34 @@ const UserList = ({ onAssignRoles, onEdit, refreshTrigger }: UserListProps) => {
 
     loadData()
   }, [refreshTrigger])
+
+  const handleDelete = async () => {
+    if (!userToDelete) return
+    setIsDeleting(true)
+    try {
+      await userService.deleteUser(userToDelete.id)
+      // Recargar datos y roles sin tocar props
+      const [usersData, allUserRoles] = await Promise.all([
+        userService.getUsers(),
+        userRoleService.getAllUserRoles(),
+      ])
+
+      setUsers(usersData)
+      const map: Record<string, UserRole[]> = {}
+      allUserRoles.forEach((ur: UserRole) => {
+        const userId = ur.user?.id
+        if (!userId) return
+        if (!map[userId]) map[userId] = []
+        map[userId].push(ur)
+      })
+      setUserRolesMap(map)
+    } catch {
+      setError('Error al eliminar el usuario')
+    } finally {
+      setIsDeleting(false)
+      setUserToDelete(null)
+    }
+  }
 
   // Filtra usuarios en memoria — sin peticiones adicionales al backend
   const filteredUsers = useMemo(() => {
@@ -196,6 +227,13 @@ const UserList = ({ onAssignRoles, onEdit, refreshTrigger }: UserListProps) => {
                         >
                           Roles
                         </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => setUserToDelete(user)}
+                        >
+                          Eliminar
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -205,6 +243,25 @@ const UserList = ({ onAssignRoles, onEdit, refreshTrigger }: UserListProps) => {
           </table>
         </div>
       )}
+
+      <Modal
+        isOpen={!!userToDelete}
+        onClose={() => setUserToDelete(null)}
+        title="Eliminar usuario"
+        confirmLabel="Eliminar"
+        confirmVariant="danger"
+        onConfirm={handleDelete}
+        isConfirmLoading={isDeleting}
+      >
+        <p className="text-gray-600 dark:text-gray-400">
+          ¿Estás seguro de que deseas eliminar permanentemente al usuario{' '}
+          <span className="font-semibold text-gray-900 dark:text-gray-100">
+            {userToDelete?.name}
+          </span>
+          ? 
+          <span className="block mt-2">Esta acción no se puede deshacer y borrará permanentemente sus accesos al sistema.</span>
+        </p>
+      </Modal>
     </div>
   )
 }
