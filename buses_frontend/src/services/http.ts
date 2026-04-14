@@ -29,7 +29,7 @@ const createHttpInstance = (baseURL: string): AxiosInstance => {
         // Solo redirige al login si el token expiró y NO estamos en una ruta pública
         if (isTokenExpired(token) && !isPublicRoute()) {
           useAuthStore.getState().logout()
-          window.location.href = '/login'
+          window.location.href = '/login?error=expired'
           return Promise.reject(new Error('Token expirado'))
         }
         config.headers.Authorization = `Bearer ${token}`
@@ -48,7 +48,7 @@ const createHttpInstance = (baseURL: string): AxiosInstance => {
       // Evita el loop infinito cuando el login devuelve 401
       if (error.response?.status === 401 && !isPublicRoute()) {
         useAuthStore.getState().logout()
-        window.location.href = '/login'
+        window.location.href = '/login?error=expired'
       }
 
       if (error.response?.status === 403 && !isPublicRoute()) {

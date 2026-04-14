@@ -13,6 +13,7 @@ public class Profile {
 
     private String phone;
     private String photo;
+    private String address;
 
     @DBRef
     private User user;
@@ -21,8 +22,9 @@ public class Profile {
 
     }
 
-    public Profile( String phone, String photo) {
+    public Profile( String phone, String photo, String address) {
         this.phone = phone;
         this.photo = photo;
+        this.address = address;
     }
 }

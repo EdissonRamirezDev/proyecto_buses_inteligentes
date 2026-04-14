@@ -53,6 +53,8 @@ public class SecurityService {
         
         // El proceso de creación cifra la contraseña
         newUser.setPassword(theEncryptionService.convertSHA256(plainPassword));
+        newUser.setHasPassword(true);
+        newUser.setProfileComplete(false);
         User savedUser = this.theUserRepository.save(newUser);
 
         // Auto-login: preparamos las credenciales para reutilizar el método login
@@ -91,6 +93,9 @@ public class SecurityService {
         uMap.put("name", theActualUser.getName());
         uMap.put("email", theActualUser.getEmail());
         uMap.put("roles", rolesList);
+        uMap.put("linkedProviders", theActualUser.getLinkedProviders() != null ? theActualUser.getLinkedProviders() : new ArrayList<>());
+        uMap.put("hasPassword", theActualUser.getHasPassword() != null ? theActualUser.getHasPassword() : true);
+        uMap.put("profileComplete", theActualUser.getProfileComplete() != null ? theActualUser.getProfileComplete() : false);
         
         result.put("user", uMap);
         return result;
@@ -208,6 +213,7 @@ public class SecurityService {
         }
         
         user.setPassword(this.theEncryptionService.convertSHA256(newPassword));
+        user.setHasPassword(true);
         user.setResetPasswordToken(null);
         user.setResetPasswordExpiration(null);
         this.theUserRepository.save(user);
@@ -231,6 +237,16 @@ public class SecurityService {
             User savedUser;
 
             if (existingUser != null) {
+                // Compatibilidad con usuarios previos: Si linkedProviders es null/vacio se auto-migra
+                if (existingUser.getLinkedProviders() == null || existingUser.getLinkedProviders().isEmpty()) {
+                    List<String> providers = new ArrayList<>();
+                    providers.add(provider);
+                    existingUser.setLinkedProviders(providers);
+                    existingUser = this.theUserRepository.save(existingUser);
+                } else if (!existingUser.getLinkedProviders().contains(provider)) {
+                    // El proveedor no está vinculado o fue desvinculado explícitamente
+                    return null;
+                }
                 savedUser = existingUser;
             } else {
                 User newUser = new User();
@@ -241,6 +257,11 @@ public class SecurityService {
                                 java.util.UUID.randomUUID().toString()
                         )
                 );
+                newUser.setHasPassword(false);
+                newUser.setProfileComplete(false);
+                List<String> providers = new ArrayList<>();
+                providers.add(provider);
+                newUser.setLinkedProviders(providers);
                 savedUser = this.theUserRepository.save(newUser);
             }
 
@@ -285,6 +306,45 @@ public class SecurityService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    public Map<String, Object> linkOAuthProvider(String userId, String provider, String token) {
+        User existingUser = this.theUserRepository.findById(userId).orElse(null);
+        if (existingUser == null) return Map.of("error", "Usuario no encontrado");
+
+        Map<String, Object> userInfo = getUserInfoFromProvider(provider, token);
+        if (userInfo == null) return Map.of("error", "Token de proveedor inválido");
+
+        String email = (String) userInfo.get("email");
+        if (email == null || !email.equals(existingUser.getEmail())) {
+            return Map.of("error", "El correo de la cuenta no coincide con tu usuario actual");
+        }
+
+        if (existingUser.getLinkedProviders() == null) {
+            existingUser.setLinkedProviders(new ArrayList<>());
+        }
+        
+        if (!existingUser.getLinkedProviders().contains(provider)) {
+            existingUser.getLinkedProviders().add(provider);
+            this.theUserRepository.save(existingUser);
+        }
+
+        return Map.of("message", "Proveedor vinculado exitosamente");
+    }
+
+    public Map<String, Object> unlinkOAuthProvider(String userId, String provider) {
+        User existingUser = this.theUserRepository.findById(userId).orElse(null);
+        if (existingUser == null) return Map.of("error", "Usuario no encontrado");
+
+        if (existingUser.getLinkedProviders() != null && existingUser.getLinkedProviders().contains(provider)) {
+            if (Boolean.FALSE.equals(existingUser.getHasPassword()) && existingUser.getLinkedProviders().size() <= 1) {
+                return Map.of("error", "Debes establecer una contraseña antes de desvincular tu único método de acceso");
+            }
+            existingUser.getLinkedProviders().remove(provider);
+            this.theUserRepository.save(existingUser);
+        }
+
+        return Map.of("message", "Proveedor desvinculado exitosamente");
     }
 
     private String getGitHubAccessToken(String code) {

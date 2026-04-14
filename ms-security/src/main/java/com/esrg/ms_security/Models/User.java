@@ -3,6 +3,8 @@ package com.esrg.ms_security.Models;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import java.util.List;
+import java.util.ArrayList;
 
 @Data
 @Document
@@ -21,6 +23,11 @@ public class User {
     // Recuperacion de Contraseña
     private String resetPasswordToken;
     private java.util.Date resetPasswordExpiration;
+    
+    // Auth configuration
+    private Boolean hasPassword;
+    private Boolean profileComplete;
+    private List<String> linkedProviders = new ArrayList<>();
 
     public User(String name, String email, String password) {
         this.name = name;
