@@ -2,10 +2,11 @@ import { useState } from 'react'
 import type { Role } from '../../types/role.types'
 import RoleList from '../../components/admin/RoleList'
 import RoleForm from '../../components/admin/RoleForm'
+import RolePermissionAssign from '../../components/admin/RolePermissionAssign'
 import Button from '../../components/common/Button'
 import AdminHeader from '../../components/common/AdminHeader'
 
-type View = 'list' | 'form'
+type View = 'list' | 'form' | 'permissions'
 
 /**
  * RolesPage orquesta la gestión completa de roles
@@ -29,6 +30,11 @@ const RolesPage = () => {
     setView('form')
   }
 
+  const handleManagePermissions = (role: Role) => {
+    setRoleToEdit(role)
+    setView('permissions')
+  }
+
   const handleSuccess = () => {
     setRefreshTrigger((prev) => prev + 1)
     setView('list')
@@ -46,9 +52,20 @@ const RolesPage = () => {
 
         {/* Header */}
         <AdminHeader 
-          title={view === 'form' ? (roleToEdit ? "Editando Rol" : "Nuevo Rol") : "Gestión de Roles"}
-          subtitle="Crea y configura roles con permisos específicos"
-          showBack={true}
+          title={
+            view === 'form' 
+              ? (roleToEdit ? "Editando Rol" : "Nuevo Rol") 
+              : view === 'permissions'
+              ? "Configurar Permisos"
+              : "Gestión de Roles"
+          }
+          subtitle={
+            view === 'permissions'
+              ? `Asigna permisos granulares al rol ${roleToEdit?.name}`
+              : "Crea y configura roles con permisos específicos"
+          }
+          showBack={view !== 'list'}
+          onBack={handleCancel}
           action={view === 'list' && (
             <Button onClick={handleCreate} leftIcon={
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -63,12 +80,15 @@ const RolesPage = () => {
         {/* Card contenedor */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
 
-          {view === 'list' ? (
+          {view === 'list' && (
             <RoleList
               onEdit={handleEdit}
+              onManagePermissions={handleManagePermissions}
               refreshTrigger={refreshTrigger}
             />
-          ) : (
+          )}
+
+          {view === 'form' && (
             <>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
                 {roleToEdit ? `Editando: ${roleToEdit.name}` : 'Nuevo rol'}
@@ -79,6 +99,14 @@ const RolesPage = () => {
                 onCancel={handleCancel}
               />
             </>
+          )}
+
+          {view === 'permissions' && roleToEdit && (
+            <RolePermissionAssign
+              role={roleToEdit}
+              onSuccess={handleSuccess}
+              onCancel={handleCancel}
+            />
           )}
         </div>
       </div>

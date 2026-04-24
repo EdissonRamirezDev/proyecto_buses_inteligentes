@@ -1,7 +1,10 @@
 package com.esrg.ms_security.Controllers;
 
+import com.esrg.ms_security.Models.Permission;
 import com.esrg.ms_security.Models.User;
 import com.esrg.ms_security.Services.SecurityService;
+
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -121,5 +124,11 @@ public class SecurityController {
         }
         
         return Map.of("message", "Contraseña actualizada exitosamente");
+    }
+
+    @PostMapping("security/permissions-validation")
+    public boolean permissionsValidation(final HttpServletRequest request,
+                                         @RequestBody Permission thePermission) {
+       return this.theSecurityService.permissionsValidation(request,thePermission);
     }
 }

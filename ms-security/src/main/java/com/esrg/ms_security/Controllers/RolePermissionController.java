@@ -51,4 +51,17 @@ public class RolePermissionController {
     public void delete(@PathVariable String id){
         this.theRolePermissionService.delete(id);
     }
+
+    @GetMapping("/role/{roleId}")
+    public List<RolePermission> findByRole(@PathVariable String roleId) {
+        return this.theRolePermissionService.findByRole(roleId);
+    }
+
+    @PostMapping("/role/{roleId}/sync")
+    public ResponseEntity<Map<String, String>> syncPermissions(
+            @PathVariable String roleId,
+            @RequestBody List<String> permissionIds) {
+        this.theRolePermissionService.syncPermissions(roleId, permissionIds);
+        return ResponseEntity.ok(Map.of("message", "Success"));
+    }
 }

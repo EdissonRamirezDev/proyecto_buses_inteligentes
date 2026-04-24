@@ -99,4 +99,26 @@ public class RolePermissionService {
         return false;
     }
 
+    public List<RolePermission> findByRole(String roleId) {
+        return this.theRolePermissionRepository.findByRoleId(roleId);
+    }
+
+    public void syncPermissions(String roleId, List<String> permissionIds) {
+        List<RolePermission> existing = this.theRolePermissionRepository.findByRoleId(roleId);
+        this.theRolePermissionRepository.deleteAll(existing);
+
+        Role role = this.theRoleRepository.findById(roleId).orElse(null);
+        if (role == null) return;
+
+        for (String pid : permissionIds) {
+            Permission p = this.thePermissionRepository.findById(pid).orElse(null);
+            if (p != null) {
+                RolePermission rp = new RolePermission();
+                rp.setRole(role);
+                rp.setPermission(p);
+                this.theRolePermissionRepository.save(rp);
+            }
+        }
+    }
+
 }
