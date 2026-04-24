@@ -40,3 +40,15 @@ export const removePermissionFromRole = async (
 ): Promise<void> => {
   await httpSecurity.delete(`/api/role-permissions/${rolePermissionId}`)
 }
+
+// Obtiene todos los permisos de un rol — HU-ENTR-1-003
+export const getPermissionsByRole = async (roleId: string): Promise<Permission[]> => {
+  const response = await httpSecurity.get<any[]>(`/api/role-permissions/role/${roleId}`)
+  // Mapeamos para devolver solo el objeto Permission contenido en RolePermission
+  return response.data.map(rp => rp.permission)
+}
+
+// Sincroniza los permisos de un rol (Sobrescribe)
+export const syncRolePermissions = async (roleId: string, permissionIds: string[]): Promise<void> => {
+  await httpSecurity.post(`/api/role-permissions/role/${roleId}/sync`, permissionIds)
+}

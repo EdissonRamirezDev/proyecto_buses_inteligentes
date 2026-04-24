@@ -4,7 +4,11 @@ import com.esrg.ms_security.Models.User;
 import com.esrg.ms_security.Models.UserRole;
 import com.esrg.ms_security.Repositories.UserRepository;
 import com.esrg.ms_security.Repositories.UserRoleRepository;
+
+import jakarta.servlet.http.HttpServletRequest;
+
 import com.esrg.ms_security.Repositories.RoleRepository;
+import com.esrg.ms_security.Models.Permission;
 import com.esrg.ms_security.Models.Role;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
 import org.springframework.core.ParameterizedTypeReference;
+
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,6 +44,8 @@ public class SecurityService {
     private NotificationService theNotificationService;
     @Autowired
     private RestTemplate restTemplate;
+    @Autowired
+    private ValidatorsService theValidatorsService;
 
     // Lee las variables del application.properties
     @Value("${github.client.id}")
@@ -140,6 +147,13 @@ public class SecurityService {
             return null;
         }
     }
+
+    public boolean permissionsValidation(final HttpServletRequest request,
+                                          Permission thePermission) {
+        boolean success=this.theValidatorsService.validationRolePermission(request,thePermission.getUrl(),thePermission.getMethod());
+        return success;
+    }
+    
 
     public Map<String, Object> verifyTwoFactor(String email, String code) {
         User user = this.theUserRepository.getUserByEmail(email);

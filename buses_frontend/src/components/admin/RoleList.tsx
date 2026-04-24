@@ -7,6 +7,7 @@ import LoadingSpinner from '../common/LoadingSpinner'
 
 interface RoleListProps {
   onEdit: (role: Role) => void
+  onManagePermissions: (role: Role) => void
   refreshTrigger: number
 }
 
@@ -14,7 +15,7 @@ interface RoleListProps {
  * RoleList muestra la tabla de roles del sistema
  * HU-ENTR-1-001
  */
-const RoleList = ({ onEdit, refreshTrigger }: RoleListProps) => {
+const RoleList = ({ onEdit, onManagePermissions, refreshTrigger }: RoleListProps) => {
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -118,6 +119,9 @@ const RoleList = ({ onEdit, refreshTrigger }: RoleListProps) => {
                   <div className="flex items-center justify-end gap-2">
                     <Button variant="ghost" size="sm" onClick={() => onEdit(role)}>
                       Editar
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => onManagePermissions(role)}>
+                      Permisos
                     </Button>
                     <Button
                       variant="danger"
