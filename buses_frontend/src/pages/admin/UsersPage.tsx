@@ -35,7 +35,11 @@ const UsersPage = () => {
         <AdminHeader 
           title={isFormOpen ? (userToEdit ? "Editando Usuario" : "Nuevo Usuario") : "Gestión de Usuarios"}
           subtitle="Administra usuarios y asigna roles del sistema"
-          showBack={true}
+          showBack={isFormOpen}
+          onBack={() => {
+            setUserToEdit(null)
+            setShowCreateForm(false)
+          }}
           action={!isFormOpen && (
             <Button
               onClick={() => setShowCreateForm(true)}

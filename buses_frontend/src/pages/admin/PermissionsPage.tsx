@@ -47,7 +47,8 @@ const PermissionsPage = () => {
         <AdminHeader 
           title={view === 'form' ? (permissionToEdit ? "Editando Permiso" : "Nuevo Permiso") : "Gestión de Permisos"}
           subtitle="Crea y configura permisos base del sistema"
-          showBack={true}
+          showBack={view === 'form'}
+          onBack={handleCancel}
           action={view === 'list' && (
             <Button onClick={handleCreate} leftIcon={
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

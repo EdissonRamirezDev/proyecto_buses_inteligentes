@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as permissionService from '../../services/permissionService'
-import type { Role, Permission } from '../../types/role.types'
+import type { Role } from '../../types/role.types'
 import Button from '../common/Button'
 import PermissionsMatrix from './PermissionsMatrix'
 
