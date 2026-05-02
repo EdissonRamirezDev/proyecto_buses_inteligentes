@@ -18,6 +18,10 @@ import PermissionsPage from '../pages/admin/PermissionsPage'
 import UsersPage from '../pages/admin/UsersPage'
 import UserRolesPage from '../pages/admin/UserRolesPage'
 
+import BusesPage from '../pages/admin/BusesPage'
+import DriversPage from '../pages/admin/DriversPage'
+import ShiftsPage from '../pages/admin/ShiftsPage'
+
 // Pages - Errors
 import NotFoundPage from '../pages/errors/NotFoundPage'
 import ForbiddenPage from '../pages/errors/ForbiddenPage'
@@ -42,6 +46,11 @@ const AppRouter = () => {
         <Route path="/admin/permissions" element={<PermissionsPage />} />
         <Route path="/admin/users" element={<UsersPage />} />
         <Route path="/admin/user-roles" element={<UserRolesPage />} />
+        
+        {/* Nuevas Rutas de Lógica */}
+        <Route path="/admin/buses" element={<BusesPage />} />
+        <Route path="/admin/drivers" element={<DriversPage />} />
+        <Route path="/admin/shifts" element={<ShiftsPage />} />
       </Route>
 
       {/* ── Rutas de error ── */}

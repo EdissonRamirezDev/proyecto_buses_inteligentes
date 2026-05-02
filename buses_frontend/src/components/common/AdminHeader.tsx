@@ -7,6 +7,7 @@ interface AdminHeaderProps {
   subtitle?: string
   showBack?: boolean
   backRoute?: string
+  onBack?: () => void
   action?: React.ReactNode
 }
 
@@ -18,6 +19,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
   subtitle, 
   showBack = true, 
   backRoute = '/dashboard',
+  onBack,
   action 
 }) => {
   const navigate = useNavigate()
@@ -30,7 +32,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => navigate(backRoute)}
+              onClick={onBack || (() => navigate(backRoute))}
               className="flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

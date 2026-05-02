@@ -4,12 +4,13 @@
   "version": "1.0.0",
   "description": "Monorepo: Frontend + ms-security y futuros microservicios",
   "scripts": {
-    "dev": "concurrently --names \"FRONTEND,SECURITY,NOTIFICATION\" --prefix-colors \"cyan,green,blue\" \"npm run dev --prefix buses_frontend\" \"npm run dev:security\" \"npm run dev:notification\"",
+    "dev": "concurrently --names \"FRONTEND,SECURITY,NOTIFICATION,LOGIC\" --prefix-colors \"cyan,green,blue,magenta\" \"npm run dev --prefix buses_frontend\" \"npm run dev:security\" \"npm run dev:notification\" \"npm run dev:logic\"",
     "dev:frontend": "npm run dev --prefix buses_frontend",
     "dev:security": "cd ms-security && mvnw.cmd spring-boot:run",
     "dev:notification": "cd ms-notification && .\\venv\\Scripts\\python main.py",
+    "dev:logic": "npm run start:dev --prefix ms-logic",
     "setup:notification": "cd ms-notification && python -m venv venv && .\\venv\\Scripts\\pip install -r requirements.txt",
-    "install:all": "npm install --prefix buses_frontend",
+    "install:all": "npm install --prefix buses_frontend && npm install --prefix ms-logic",
     "build:frontend": "npm run build --prefix buses_frontend"
   },
   "devDependencies": {
