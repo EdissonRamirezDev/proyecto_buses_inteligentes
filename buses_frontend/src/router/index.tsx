@@ -21,6 +21,9 @@ import UserRolesPage from '../pages/admin/UserRolesPage'
 import BusesPage from '../pages/admin/BusesPage'
 import DriversPage from '../pages/admin/DriversPage'
 import ShiftsPage from '../pages/admin/ShiftsPage'
+import RoutesPage from '../pages/admin/RoutesPage'
+import BusStopsPage from '../pages/admin/BusStopsPage'
+import SchedulesPage from '../pages/admin/SchedulesPage'
 
 // Pages - Errors
 import NotFoundPage from '../pages/errors/NotFoundPage'
@@ -51,6 +54,11 @@ const AppRouter = () => {
         <Route path="/admin/buses" element={<BusesPage />} />
         <Route path="/admin/drivers" element={<DriversPage />} />
         <Route path="/admin/shifts" element={<ShiftsPage />} />
+        
+        {/* Rutas para Rutas, Paraderos, y Programación */}
+        <Route path="/admin/routes" element={<RoutesPage />} />
+        <Route path="/admin/bus-stops" element={<BusStopsPage />} />
+        <Route path="/admin/schedules" element={<SchedulesPage />} />
       </Route>
 
       {/* ── Rutas de error ── */}

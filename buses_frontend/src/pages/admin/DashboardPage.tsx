@@ -133,11 +133,25 @@ const DashboardPage = () => {
 
           {/* Módulos Públicos / Generales */}
           <DashboardCard
-            to="/rutas"
+            to="/admin/routes"
             icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>}
-            title="Mapa de rutas"
-            description="Consulta paraderos y disponibilidad"
+            title="Gestión de Rutas"
+            description="Administra rutas y asignación de nodos"
             color="teal"
+          />
+          <DashboardCard
+            to="/admin/bus-stops"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
+            title="Gestión de Paraderos"
+            description="Registra estaciones y paraderos en el mapa"
+            color="blue"
+          />
+          <DashboardCard
+            to="/admin/schedules"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
+            title="Programación Operativa"
+            description="Asigna buses a rutas en fechas y horas"
+            color="green"
           />
         </div>
       </main>

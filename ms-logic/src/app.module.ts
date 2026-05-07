@@ -10,6 +10,9 @@ import { GpsModule } from './gps/gps.module';
 import { IncidentsModule } from './incidents/incidents.module';
 import { BusesIncidentsModule } from './buses_incidents/buses_incidents.module';
 import { PhotosModule } from './photos/photos.module';
+import { BusStopsModule } from './bus-stops/bus-stops.module';
+import { NodesModule } from './nodes/nodes.module';
+import { SchedulesModule } from './schedules/schedules.module';
 
 @Module({
   imports: [
@@ -37,6 +40,9 @@ import { PhotosModule } from './photos/photos.module';
     IncidentsModule,
     BusesIncidentsModule,
     PhotosModule,
+    BusStopsModule,
+    NodesModule,
+    SchedulesModule,
   ],
 })
 export class AppModule {}
