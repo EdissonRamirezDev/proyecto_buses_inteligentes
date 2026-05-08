@@ -1,5 +1,6 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { Shift } from "../../shifts/entities/shift.entity";
+import { CompanyDriver } from "../../company_drivers/entities/company_driver.entity";
 
 @Entity('drivers')
 export class Driver {
@@ -24,6 +25,10 @@ export class Driver {
     @Column()
     status?: string;
 
+    // One to Many relationships
     @OneToMany(() => Shift, (shift) => shift.driver)
     shifts?: Shift[];
+
+    @OneToMany(() => CompanyDriver, (companyDriver) => companyDriver.company)
+    companyDrivers?: CompanyDriver[];
 }

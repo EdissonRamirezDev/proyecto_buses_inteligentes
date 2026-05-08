@@ -10,6 +10,7 @@ import { GpsModule } from './gps/gps.module';
 import { IncidentsModule } from './incidents/incidents.module';
 import { BusesIncidentsModule } from './buses_incidents/buses_incidents.module';
 import { PhotosModule } from './photos/photos.module';
+import { CompanyDriversModule } from './company_drivers/company_drivers.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { PhotosModule } from './photos/photos.module';
     IncidentsModule,
     BusesIncidentsModule,
     PhotosModule,
+    CompanyDriversModule,
   ],
 })
 export class AppModule {}
