@@ -78,4 +78,18 @@ export class ShiftsService {
 
     return { message: `Turno #${id} eliminado correctamente` };
   }
+
+  async findActiveByDriverEmail(email: string): Promise<Shift> {
+    const shift = await this.shiftRepository.findOne({
+      where: {
+        driver: { email },
+        estado: 'ACTIVO'
+      },
+      relations: ['bus', 'driver'],
+      order: { fecha_inicio: 'DESC' }
+    });
+
+    if (!shift) throw new NotFoundException(`No se encontró un turno activo para el conductor con email ${email}`);
+    return shift;
+  }
 }

@@ -24,3 +24,8 @@ export const updateShift = async (id: number, data: Partial<Shift>): Promise<Shi
 export const deleteShift = async (id: number): Promise<void> => {
   await httpBusiness.delete(`/shifts/${id}`);
 };
+
+export const getActiveShiftByEmail = async (email: string): Promise<Shift> => {
+  const response = await httpBusiness.get<Shift>(`/shifts/active/${email}`);
+  return response.data;
+};

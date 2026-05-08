@@ -27,6 +27,11 @@ export class ShiftsController {
     return this.shiftsService.update(+id, updateShiftDto);
   }
 
+  @Get('active/:email')
+  findActive(@Param('email') email: string) {
+    return this.shiftsService.findActiveByDriverEmail(email);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.shiftsService.remove(+id);

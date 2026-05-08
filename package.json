@@ -1,4 +1,7 @@
 {
+  "dependencies": {
+    "@nestjs/mapped-types": "*"
+  },
   "name": "smart_buses_monorepo",
   "private": true,
   "version": "1.0.0",

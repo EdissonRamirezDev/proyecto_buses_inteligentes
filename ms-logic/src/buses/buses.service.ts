@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateBusDto } from './dto/create-bus.dto';
 import { UpdateBusDto } from './dto/update-bus.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Bus } from './entities/bus.entity';
 import { Repository } from 'typeorm';
+import { CompaniesService } from 'src/companies/companies.service';
 
 @Injectable()
 export class BusesService {
@@ -11,10 +12,25 @@ export class BusesService {
   constructor(
     @InjectRepository(Bus)
     private readonly busRepository: Repository<Bus>,
-  ) {}
+    private readonly companyService: CompaniesService
+  ) { }
 
-  async create(createBusDto: CreateBusDto): Promise<Bus>{
-    const bus = this.busRepository.create(createBusDto);
+  async create(createBusDto: CreateBusDto): Promise<Bus> {
+    let company: any = null;
+
+    if (createBusDto.companyId) {
+      company = await this.companyService.findOne(createBusDto.companyId)
+      .catch(() => null);
+
+      if (!company) {
+        throw new NotFoundException('Company id not found')
+      }
+    }
+    
+    const bus = this.busRepository.create({
+      ...createBusDto,
+      company: company
+    });
     return await this.busRepository.save(bus);
   }
 
@@ -24,7 +40,8 @@ export class BusesService {
 
   async findOne(id: number) {
     const bus = await this.busRepository.findOne({
-      where: {id}
+      where: { id },
+      relations: ['company']
     });
 
     if (!bus) throw new NotFoundException(`Bus #${id} no encontrado`);

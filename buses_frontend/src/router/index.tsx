@@ -25,6 +25,9 @@ import RoutesPage from '../pages/admin/RoutesPage'
 import BusStopsPage from '../pages/admin/BusStopsPage'
 import SchedulesPage from '../pages/admin/SchedulesPage'
 
+// Pages - Driver
+import ActiveShiftPage from '../pages/driver/ActiveShiftPage'
+
 // Pages - Errors
 import NotFoundPage from '../pages/errors/NotFoundPage'
 import ForbiddenPage from '../pages/errors/ForbiddenPage'
@@ -59,6 +62,9 @@ const AppRouter = () => {
         <Route path="/admin/routes" element={<RoutesPage />} />
         <Route path="/admin/bus-stops" element={<BusStopsPage />} />
         <Route path="/admin/schedules" element={<SchedulesPage />} />
+
+        {/* Rutas de Conductor */}
+        <Route path="/conductor/turno" element={<ActiveShiftPage />} />
       </Route>
 
       {/* ── Rutas de error ── */}

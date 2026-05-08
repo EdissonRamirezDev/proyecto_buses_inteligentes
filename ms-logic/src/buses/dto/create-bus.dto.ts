@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsNumber, Min, IsISIN, IsIn } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, Min, IsISIN, IsIn, IsOptional } from 'class-validator';
 
 export class CreateBusDto {
     @IsString()
@@ -18,4 +18,8 @@ export class CreateBusDto {
     @IsNotEmpty({ message: 'El estado es requerido' })
     @IsIn(['available', 'in service', 'maintenance', 'out of service'], { message: 'El estado debe ser available, in service, maintenance o out of service' })
     estado: string;
+
+    @IsOptional()
+    @IsNumber()
+    companyId?: number
 }
