@@ -13,6 +13,9 @@ import { PhotosModule } from './photos/photos.module';
 import { BusStopsModule } from './bus-stops/bus-stops.module';
 import { NodesModule } from './nodes/nodes.module';
 import { SchedulesModule } from './schedules/schedules.module';
+import { CitizensModule } from './citizens/citizens.module';
+import { TicketsModule } from './tickets/tickets.module';
+import { HistoryModule } from './history/history.module';
 
 @Module({
   imports: [
@@ -43,6 +46,9 @@ import { SchedulesModule } from './schedules/schedules.module';
     BusStopsModule,
     NodesModule,
     SchedulesModule,
+    CitizensModule,
+    TicketsModule,
+    HistoryModule,
   ],
 })
 export class AppModule {}
