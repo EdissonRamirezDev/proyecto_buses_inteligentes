@@ -15,4 +15,7 @@ export class History {
 
   @ManyToOne(() => Node, (node) => node.history, { onDelete: 'CASCADE' })
   node: Node;
+
+  @Column({ type: 'enum', enum: ['ENTRADA', 'SALIDA'], default: 'ENTRADA' })
+  tipo_validacion: string;
 }

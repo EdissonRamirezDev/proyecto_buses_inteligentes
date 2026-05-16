@@ -21,6 +21,10 @@ export class CreateCitizenDto {
   @IsOptional()
   direccion?: string;
 
+  @IsString()
+  @IsOptional()
+  fecha_nacimiento?: string;
+
   @IsNumber()
   @Min(0)
   @IsOptional()
