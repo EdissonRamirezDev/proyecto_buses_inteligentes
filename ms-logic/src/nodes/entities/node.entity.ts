@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
 import { Route } from '../../routes/entities/route.entity';
+import { History } from '../../history/entities/history.entity';
 import { BusStop } from '../../bus-stops/entities/bus-stop.entity';
 
 @Entity('nodes')
@@ -18,6 +19,9 @@ export class Node {
 
   @ManyToOne(() => Route, (route) => route.nodes, { onDelete: 'CASCADE' })
   route: Route;
+
+  @OneToMany(() => History, (history) => history.node)
+  history: History[];
 
   @ManyToOne(() => BusStop, (busStop) => busStop.nodes, { onDelete: 'CASCADE' })
   busStop: BusStop;

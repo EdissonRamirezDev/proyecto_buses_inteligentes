@@ -24,6 +24,9 @@ import ShiftsPage from '../pages/admin/ShiftsPage'
 import RoutesPage from '../pages/admin/RoutesPage'
 import BusStopsPage from '../pages/admin/BusStopsPage'
 import SchedulesPage from '../pages/admin/SchedulesPage'
+import CitizensPage from '../pages/admin/CitizensPage'
+import TicketsPage from '../pages/admin/TicketsPage'
+import HistoryPage from '../pages/admin/HistoryPage'
 
 // Pages - Errors
 import NotFoundPage from '../pages/errors/NotFoundPage'
@@ -59,6 +62,9 @@ const AppRouter = () => {
         <Route path="/admin/routes" element={<RoutesPage />} />
         <Route path="/admin/bus-stops" element={<BusStopsPage />} />
         <Route path="/admin/schedules" element={<SchedulesPage />} />
+        <Route path="/admin/citizens" element={<CitizensPage />} />
+        <Route path="/admin/tickets" element={<TicketsPage />} />
+        <Route path="/admin/history" element={<HistoryPage />} />
       </Route>
 
       {/* ── Rutas de error ── */}

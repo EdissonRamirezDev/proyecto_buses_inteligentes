@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
 import { Route } from '../../routes/entities/route.entity';
 import { Bus } from '../../buses/entities/bus.entity';
+import { Ticket } from '../../tickets/entities/ticket.entity';
 
 @Entity('schedules')
 export class Schedule {
@@ -30,4 +31,7 @@ export class Schedule {
 
   @ManyToOne(() => Bus, (bus) => bus.shifts, { onDelete: 'SET NULL' }) // Usando shifts temporalmente o creando relacion en Bus
   bus: Bus;
+
+  @OneToMany(() => Ticket, (ticket) => ticket.schedule)
+  tickets: Ticket[];
 }
