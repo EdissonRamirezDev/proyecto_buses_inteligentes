@@ -31,4 +31,17 @@ export class CitizensController {
   remove(@Param('id') id: string) {
     return this.citizensService.remove(id);
   }
+
+  @Post(':id/recharge')
+  rechargeWallet(
+    @Param('id') id: string,
+    @Body() body: { monto: number; referencia: string }
+  ) {
+    return this.citizensService.rechargeWallet(id, body.monto, body.referencia);
+  }
+
+  @Get(':id/transactions')
+  getTransactions(@Param('id') id: string) {
+    return this.citizensService.getTransactions(id);
+  }
 }

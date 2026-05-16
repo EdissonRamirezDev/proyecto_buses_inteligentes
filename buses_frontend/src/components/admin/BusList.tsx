@@ -6,7 +6,12 @@ import Input from '../common/Input';
 import Modal from '../common/Modal';
 import LoadingSpinner from '../common/LoadingSpinner';
 
-const BusList = () => {
+interface BusListProps {
+  onEdit?: (bus: Bus) => void;
+  refreshTrigger?: number;
+}
+
+const BusList = ({ onEdit, refreshTrigger = 0 }: BusListProps) => {
   const [buses, setBuses] = useState<Bus[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +34,7 @@ const BusList = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [refreshTrigger]);
 
   const handleDelete = async () => {
     if (!busToDelete?.id) return;
@@ -116,6 +121,11 @@ const BusList = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
+                      {onEdit && (
+                        <Button variant="ghost" size="sm" onClick={() => onEdit(bus)}>
+                          Editar
+                        </Button>
+                      )}
                       <Button variant="danger" size="sm" onClick={() => setBusToDelete(bus)}>
                         Eliminar
                       </Button>

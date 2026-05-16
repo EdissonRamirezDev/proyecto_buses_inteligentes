@@ -26,6 +26,15 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({
 
   return (
     <div className="mb-8">
+      {/* Breadcrumbs */}
+      <nav className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider">
+        <span className="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400" onClick={() => navigate('/dashboard')}>Dashboard</span>
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+        <span className="font-bold text-gray-900 dark:text-gray-100">{title}</span>
+      </nav>
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           {showBack && (
