@@ -1,5 +1,6 @@
 import React from 'react';
-import { useToastStore, ToastType } from '../../store/toastStore';
+import { useToastStore } from '../../store/toastStore';
+import type { ToastType } from '../../store/toastStore';
 
 const ToastIcon = ({ type }: { type: ToastType }) => {
   switch (type) {

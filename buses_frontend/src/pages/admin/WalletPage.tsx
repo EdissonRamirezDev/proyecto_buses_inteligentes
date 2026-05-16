@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getCitizens } from '../../services/citizensService';
-import { rechargeWallet, getTransactions, WalletTransaction } from '../../services/walletService';
+import { rechargeWallet, getTransactions } from '../../services/walletService';
+import type { WalletTransaction } from '../../services/walletService';
 import type { Citizen } from '../../types/citizen.types';
 import Button from '../../components/common/Button';
 

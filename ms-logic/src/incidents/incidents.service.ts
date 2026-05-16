@@ -24,13 +24,13 @@ export class IncidentsService {
       titulo: createIncidentDto.titulo,
       descripcion: createIncidentDto.descripcion,
       categoria: createIncidentDto.categoria,
-      shift: { id: createIncidentDto.shiftId } as Shift,
+      shift: { id: Number(createIncidentDto.shiftId) } as any,
     });
     const savedIncident = await this.incidentRepository.save(incident);
 
     const incidentBus = this.incidentBusRepository.create({
       incident: savedIncident,
-      bus: createIncidentDto.busId ? { id: createIncidentDto.busId } : undefined,
+      bus: createIncidentDto.busId ? ({ id: Number(createIncidentDto.busId) } as any) : undefined,
     });
     const savedIncidentBus = await this.incidentBusRepository.save(incidentBus);
 

@@ -17,13 +17,13 @@ const BusesPage = () => {
   const [placa, setPlaca] = useState('');
   const [modelo, setModelo] = useState('');
   const [capacidad, setCapacidad] = useState<number>(40);
-  const [estado, setEstado] = useState('activo');
+  const [estado, setEstado] = useState('available');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
 
   const handleCreate = () => {
     setBusToEdit(null);
-    setPlaca(''); setModelo(''); setCapacidad(40); setEstado('activo');
+    setPlaca(''); setModelo(''); setCapacidad(40); setEstado('available');
     setFormError('');
     setView('form');
   };
@@ -130,9 +130,9 @@ const BusesPage = () => {
                     onChange={(e) => setEstado(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-4 py-2.5"
                   >
-                    <option value="activo">Activo</option>
-                    <option value="en_mantenimiento">En Mantenimiento</option>
-                    <option value="fuera_servicio">Fuera de Servicio</option>
+                    <option value="available">Activo</option>
+                    <option value="maintenance">En Mantenimiento</option>
+                    <option value="out of service">Fuera de Servicio</option>
                   </select>
                 </div>
 

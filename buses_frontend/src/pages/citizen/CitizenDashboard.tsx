@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store';
 import { getCitizens } from '../../services/citizensService';
-import { getTransactions, WalletTransaction } from '../../services/walletService';
+import { getTransactions } from '../../services/walletService';
+import type { WalletTransaction } from '../../services/walletService';
 import { getTickets } from '../../services/ticketsService';
 import { httpBusiness } from '../../services/http';
 import type { Citizen } from '../../types/citizen.types';

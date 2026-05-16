@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getIncidents, createIncident, updateIncidentStatus, Incident } from '../../services/incidentsService';
-import { getShifts } from '../../services/shiftsService'; // Asumiendo que existe o lo crearemos
+import { getIncidents, createIncident, updateIncidentStatus } from '../../services/incidentsService';
+import type { Incident } from '../../services/incidentsService';
+import { getShifts } from '../../services/shiftService'; // Asumiendo que existe o lo crearemos
 import { httpBusiness } from '../../services/http';
 import Button from '../../components/common/Button';
 

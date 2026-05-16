@@ -23,7 +23,7 @@ export class HistoryService {
       // 1. Verificar ticket
       const ticket = await queryRunner.manager.findOne(Ticket, { 
         where: { id: ticketId },
-        relations: ['schedule', 'schedule.shift', 'schedule.shift.bus']
+        relations: ['schedule', 'schedule.bus']
       });
       if (!ticket) throw new NotFoundException('Boleto no encontrado');
       
@@ -45,7 +45,7 @@ export class HistoryService {
          }
 
          // Validar capacidad
-         const bus = ticket.schedule.shift?.bus;
+         const bus = ticket.schedule.bus;
          if (bus && bus.capacidad) {
             const ocupacionActual = await queryRunner.manager.count(Ticket, {
                where: { 

@@ -22,12 +22,14 @@ const ProtectedRoute = () => {
   const location = useLocation()
 
   // Esperar a que Zustand rehidrate el estado desde localStorage
-  // Sin esta guarda, isAuthenticated es false en el primer render
-  // y el router redirige al login incorrectamente
-  if (!hasHydrated) {
+  // Fail-safe: si ya detectamos que está autenticado desde el inicio, no bloqueamos
+  if (!hasHydrated && !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+          <p className="text-gray-400 text-sm animate-pulse">Iniciando sesión...</p>
+        </div>
       </div>
     )
   }

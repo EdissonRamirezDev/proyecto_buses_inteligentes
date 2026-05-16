@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAgeDistribution, getRevenueByMethod } from '../../services/reportsService';
-import { getBuses } from '../../services/busesService';
+import { getBuses } from '../../services/busService';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const AnalyticsPage = () => {
