@@ -6,8 +6,8 @@ export class HistoryController {
   constructor(private readonly historyService: HistoryService) {}
 
   @Post('scan')
-  scanTicket(@Body() body: { ticketId: string; nodeId: string }) {
-    return this.historyService.scanTicket(body.ticketId, body.nodeId);
+  scanTicket(@Body() body: { ticketId: string; nodeId: string; tipo_validacion: 'ENTRADA' | 'SALIDA' }) {
+    return this.historyService.scanTicket(body.ticketId, body.nodeId, body.tipo_validacion);
   }
 
   @Get()

@@ -15,7 +15,7 @@ const HistoryPage = () => {
   const [routes, setRoutes] = useState<Route[]>([]);
   
   const [isScanning, setIsScanning] = useState(false);
-  const [formData, setFormData] = useState({ ticketId: '', nodeId: '' });
+  const [formData, setFormData] = useState<{ ticketId: string; nodeId: string; tipo_validacion: 'ENTRADA' | 'SALIDA' }>({ ticketId: '', nodeId: '', tipo_validacion: 'ENTRADA' });
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -23,7 +23,7 @@ const HistoryPage = () => {
     try {
       const [hData, tData, rData] = await Promise.all([getHistory(), getTickets(), getRoutes()]);
       setHistory(hData);
-      setTickets(tData.filter(t => t.estado === 'activo'));
+      setTickets(tData.filter(t => t.estado === 'activo' || t.estado === 'usado'));
       setRoutes(rData);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -40,8 +40,8 @@ const HistoryPage = () => {
     setSuccessMsg('');
     
     try {
-      await scanTicket(formData.ticketId, formData.nodeId);
-      setSuccessMsg('¡Validación exitosa! El boleto ha sido marcado como USADO.');
+      await scanTicket(formData.ticketId, formData.nodeId, formData.tipo_validacion);
+      setSuccessMsg(`¡Validación exitosa! El boleto ha sido marcado como ${formData.tipo_validacion === 'ENTRADA' ? 'USADO' : 'COMPLETADO'}.`);
       setTimeout(() => {
         setIsScanning(false);
         setSuccessMsg('');
@@ -70,23 +70,30 @@ const HistoryPage = () => {
       {isScanning && (
         <div className="bg-slate-800 p-6 rounded-xl shadow-2xl mb-6 border border-indigo-500/50 animate-in slide-in-from-top-4">
           <h2 className="text-xl font-bold mb-2 text-indigo-400">Punto de Validación (Scanner Simulador)</h2>
-          <p className="text-sm text-slate-400 mb-6">Simula el momento en que un pasajero escanea su código QR al subir al bus.</p>
+          <p className="text-sm text-slate-400 mb-6">Simula el momento en que un pasajero escanea su código QR al subir o bajar del bus.</p>
           
           {errorMsg && <div className="mb-4 bg-red-900/50 border border-red-500 text-red-200 p-3 rounded-lg text-sm">❌ {errorMsg}</div>}
           {successMsg && <div className="mb-4 bg-emerald-900/50 border border-emerald-500 text-emerald-200 p-3 rounded-lg text-sm">✅ {successMsg}</div>}
 
-          <form onSubmit={handleScan} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleScan} className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-               <label className="block text-sm font-medium text-slate-300 mb-1">1. Escanear Boleto (QR)</label>
+               <label className="block text-sm font-medium text-slate-300 mb-1">1. Tipo de Acción</label>
+               <select required value={formData.tipo_validacion} onChange={e => setFormData({...formData, tipo_validacion: e.target.value as 'ENTRADA' | 'SALIDA'})} className="w-full bg-slate-900 border-slate-600 text-white rounded-lg p-3">
+                 <option value="ENTRADA">Entrada (Abordaje)</option>
+                 <option value="SALIDA">Salida (Descenso)</option>
+               </select>
+            </div>
+            <div>
+               <label className="block text-sm font-medium text-slate-300 mb-1">2. Escanear Boleto (QR)</label>
                <select required value={formData.ticketId} onChange={e => setFormData({...formData, ticketId: e.target.value})} className="w-full bg-slate-900 border-slate-600 text-white rounded-lg p-3">
-                 <option value="">Seleccione un boleto activo...</option>
+                 <option value="">Seleccione un boleto...</option>
                  {tickets.map(t => (
-                   <option key={t.id} value={t.id}>{t.codigo_qr} - {t.citizen?.nombres} ({t.schedule?.route?.nombre})</option>
+                   <option key={t.id} value={t.id}>{t.codigo_qr} - {t.citizen?.nombres} ({t.estado})</option>
                  ))}
                </select>
             </div>
             <div>
-               <label className="block text-sm font-medium text-slate-300 mb-1">2. Punto de Validación (Nodo)</label>
+               <label className="block text-sm font-medium text-slate-300 mb-1">3. Punto de Validación (Nodo)</label>
                <select required value={formData.nodeId} onChange={e => setFormData({...formData, nodeId: e.target.value})} className="w-full bg-slate-900 border-slate-600 text-white rounded-lg p-3">
                  <option value="">Seleccione el paradero/nodo...</option>
                  {routes.map(route => (
@@ -100,9 +107,9 @@ const HistoryPage = () => {
                  ))}
                </select>
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-3">
               <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 py-4 font-bold uppercase tracking-wider">
-                Validar Acceso
+                Validar {formData.tipo_validacion}
               </Button>
             </div>
           </form>
@@ -117,12 +124,13 @@ const HistoryPage = () => {
               <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Pasajero</th>
               <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Boleto (QR)</th>
               <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Lugar de Escaneo</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Acción</th>
               <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Ruta</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-700">
             {history.length === 0 ? (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">No hay registros de validación</td></tr>
+              <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">No hay registros de validación</td></tr>
             ) : history.map((entry) => (
               <tr key={entry.id} className="hover:bg-slate-700/30 transition-colors">
                 <td className="px-6 py-4 text-sm text-slate-300 font-mono">
@@ -140,6 +148,11 @@ const HistoryPage = () => {
                   <div className="text-sm text-indigo-300 font-medium">
                     {entry.node?.busStop?.nombre || `Nodo ${entry.node?.orden}`}
                   </div>
+                </td>
+                <td className="px-6 py-4">
+                  <span className={`px-2 py-1 text-xs font-bold rounded ${entry.tipo_validacion === 'ENTRADA' ? 'bg-blue-900/50 text-blue-300' : 'bg-orange-900/50 text-orange-300'}`}>
+                    {entry.tipo_validacion}
+                  </span>
                 </td>
                 <td className="px-6 py-4">
                   <div className="text-xs text-slate-400 uppercase">{entry.node?.route?.nombre}</div>

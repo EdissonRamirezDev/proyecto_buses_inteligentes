@@ -14,17 +14,50 @@ export class HistoryService {
     private dataSource: DataSource,
   ) {}
 
-  async scanTicket(ticketId: string, nodeId: string): Promise<History> {
+  async scanTicket(ticketId: string, nodeId: string, tipo_validacion: 'ENTRADA' | 'SALIDA' = 'ENTRADA'): Promise<History> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
       // 1. Verificar ticket
-      const ticket = await queryRunner.manager.findOne(Ticket, { where: { id: ticketId } });
+      const ticket = await queryRunner.manager.findOne(Ticket, { 
+        where: { id: ticketId },
+        relations: ['schedule', 'schedule.shift', 'schedule.shift.bus']
+      });
       if (!ticket) throw new NotFoundException('Boleto no encontrado');
-      if (ticket.estado !== 'activo') {
-        throw new BadRequestException(`El boleto no se puede usar. Estado actual: ${ticket.estado}`);
+      
+      if (tipo_validacion === 'ENTRADA' && ticket.estado !== 'activo') {
+        throw new BadRequestException(`El boleto no se puede usar para abordar. Estado actual: ${ticket.estado}`);
+      }
+      
+      if (tipo_validacion === 'SALIDA' && ticket.estado !== 'usado') {
+        throw new BadRequestException(`El boleto no está en curso o ya finalizó. Estado actual: ${ticket.estado}`);
+      }
+
+      // 1.5 Validar estado del despacho (Schedule)
+      if (ticket.schedule && tipo_validacion === 'ENTRADA') {
+         if (ticket.schedule.estado === 'cancelado') {
+           throw new BadRequestException('El despacho asociado a este boleto ha sido cancelado.');
+         }
+         if (ticket.schedule.estado === 'completado') {
+           throw new BadRequestException('El despacho asociado a este boleto ya finalizó.');
+         }
+
+         // Validar capacidad
+         const bus = ticket.schedule.shift?.bus;
+         if (bus && bus.capacidad) {
+            const ocupacionActual = await queryRunner.manager.count(Ticket, {
+               where: { 
+                 schedule: { id: ticket.schedule.id },
+                 estado: 'usado'
+               }
+            });
+
+            if (ocupacionActual >= bus.capacidad) {
+               throw new BadRequestException(`No se puede abordar. El bus ha alcanzado su capacidad máxima (${bus.capacidad} pasajeros).`);
+            }
+         }
       }
 
       // 2. Verificar nodo
@@ -35,10 +68,16 @@ export class HistoryService {
       const history = new History();
       history.ticket = ticket;
       history.node = node;
+      history.tipo_validacion = tipo_validacion;
       const savedHistory = await queryRunner.manager.save(history);
 
-      // 4. Marcar boleto como usado
-      ticket.estado = 'usado';
+      // 4. Marcar boleto según tipo de validación
+      if (tipo_validacion === 'ENTRADA') {
+        ticket.estado = 'usado'; // En viaje
+      } else if (tipo_validacion === 'SALIDA') {
+        ticket.estado = 'completado'; // Viaje terminado
+      }
+      
       await queryRunner.manager.save(ticket);
 
       await queryRunner.commitTransaction();

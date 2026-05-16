@@ -6,8 +6,8 @@ export const getHistory = async (): Promise<HistoryEntry[]> => {
   return response.data;
 };
 
-export const scanTicket = async (ticketId: string, nodeId: string): Promise<HistoryEntry> => {
-  const response = await httpBusiness.post<HistoryEntry>('/history/scan', { ticketId, nodeId });
+export const scanTicket = async (ticketId: string, nodeId: string, tipo_validacion: 'ENTRADA' | 'SALIDA'): Promise<HistoryEntry> => {
+  const response = await httpBusiness.post<HistoryEntry>('/history/scan', { ticketId, nodeId, tipo_validacion });
   return response.data;
 };
 

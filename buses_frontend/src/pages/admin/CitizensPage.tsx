@@ -12,7 +12,7 @@ const CitizensPage = () => {
   const [securityUsers, setSecurityUsers] = useState<User[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [editingCitizen, setEditingCitizen] = useState<Citizen | null>(null);
-  const [formData, setFormData] = useState({ userId: '', nombres: '', apellidos: '', telefono: '', direccion: '' });
+  const [formData, setFormData] = useState({ userId: '', nombres: '', apellidos: '', telefono: '', direccion: '', fecha_nacimiento: '' });
   const [rechargeData, setRechargeData] = useState<{ id: string; amount: number } | null>(null);
 
   const fetchData = async () => {
@@ -29,7 +29,7 @@ const CitizensPage = () => {
   useEffect(() => { fetchData(); }, []);
 
   const resetForm = () => {
-    setFormData({ userId: '', nombres: '', apellidos: '', telefono: '', direccion: '' });
+    setFormData({ userId: '', nombres: '', apellidos: '', telefono: '', direccion: '', fecha_nacimiento: '' });
     setIsCreating(false);
     setEditingCitizen(null);
   };
@@ -56,7 +56,8 @@ const CitizensPage = () => {
       nombres: citizen.nombres,
       apellidos: citizen.apellidos,
       telefono: citizen.telefono || '',
-      direccion: citizen.direccion || ''
+      direccion: citizen.direccion || '',
+      fecha_nacimiento: citizen.fecha_nacimiento || ''
     });
     setIsCreating(true);
   };
@@ -163,6 +164,10 @@ const CitizensPage = () => {
                <label className="block text-sm font-medium text-slate-400 mb-1">Dirección (Residencia)</label>
                <input type="text" value={formData.direccion} onChange={(e) => setFormData({ ...formData, direccion: e.target.value })} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-3" />
             </div>
+            <div className="md:col-span-2">
+               <label className="block text-sm font-medium text-slate-400 mb-1">Fecha de Nacimiento</label>
+               <input type="date" value={formData.fecha_nacimiento} onChange={(e) => setFormData({ ...formData, fecha_nacimiento: e.target.value })} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-3" />
+            </div>
             <Button type="submit" className="md:col-span-2 bg-green-600 hover:bg-green-700 mt-2">
               {editingCitizen ? 'Guardar Cambios' : 'Guardar Perfil'}
             </Button>
@@ -207,49 +212,97 @@ const CitizensPage = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-700">
-            {citizens.length === 0 ? (
-              <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">No hay ciudadanos registrados</td></tr>
-            ) : citizens.map((citizen) => {
-              const linkedUser = getUserEmail(citizen.userId);
-              return (
-              <tr key={citizen.id} className="hover:bg-slate-700/30 transition-colors">
-                <td className="px-6 py-4">
-                  <div className="font-bold text-white text-base">{citizen.nombres} {citizen.apellidos}</div>
-                  <div className="text-xs text-slate-500 font-mono">ID: {citizen.id.split('-')[0]}...</div>
-                </td>
-                <td className="px-6 py-4">
-                  {linkedUser ? (
-                    <div>
-                      <span className="text-xs bg-blue-900/50 text-blue-300 px-2 py-1 rounded border border-blue-700/50 font-bold">🔗 Enlazado</span>
-                      <div className="text-xs text-slate-500 mt-1 truncate max-w-[150px]">{linkedUser.email}</div>
-                    </div>
-                  ) : (
-                    <span className="text-xs bg-amber-900/30 text-amber-400 px-2 py-1 rounded border border-amber-700/30">⚠️ Sin cuenta</span>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm text-slate-300">{citizen.telefono || 'Sin teléfono'}</div>
-                  <div className="text-xs text-slate-500 truncate max-w-xs">{citizen.direccion || 'Sin dirección'}</div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-lg font-bold text-green-400 bg-green-900/30 px-3 py-1 rounded border border-green-800/50">
-                      ${Number(citizen.saldo).toFixed(2)}
+            {/* Lista combinada: Mostrar ciudadanos que ya tienen perfil + usuarios sin perfil */}
+            {(() => {
+              // 1. Mostrar los ciudadanos (que ya tienen perfil en ms-logic)
+              const renderCitizens = citizens.map((citizen) => {
+                const linkedUser = getUserEmail(citizen.userId);
+                return (
+                  <tr key={`citizen-${citizen.id}`} className="hover:bg-slate-700/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="font-bold text-white text-base">{citizen.nombres} {citizen.apellidos}</div>
+                      <div className="text-xs text-slate-500 font-mono">ID: {citizen.id.split('-')[0]}...</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {linkedUser ? (
+                        <div>
+                          <span className="text-xs bg-blue-900/50 text-blue-300 px-2 py-1 rounded border border-blue-700/50 font-bold">🔗 Enlazado</span>
+                          <div className="text-xs text-slate-500 mt-1 truncate max-w-[150px]">{linkedUser.email}</div>
+                        </div>
+                      ) : (
+                        <span className="text-xs bg-amber-900/30 text-amber-400 px-2 py-1 rounded border border-amber-700/30">⚠️ Independiente</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-slate-300">{citizen.telefono || 'Sin teléfono'}</div>
+                      <div className="text-xs text-slate-500 truncate max-w-xs">{citizen.direccion || 'Sin dirección'}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-lg font-bold text-green-400 bg-green-900/30 px-3 py-1 rounded border border-green-800/50">
+                          ${Number(citizen.saldo).toFixed(2)}
+                        </span>
+                        <button 
+                          onClick={() => setRechargeData({ id: citizen.id, amount: 10000 })}
+                          className="text-xs bg-slate-700 hover:bg-slate-600 text-white font-bold px-2 py-1 rounded"
+                        >
+                          + Recargar
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right space-x-2">
+                      <button onClick={() => handleEdit(citizen)} className="text-blue-400 hover:text-blue-300 font-medium text-sm">Editar</button>
+                      <button onClick={() => handleDelete(citizen.id)} className="text-red-400 hover:text-red-300 font-medium text-sm">Eliminar</button>
+                    </td>
+                  </tr>
+                );
+              });
+
+              // 2. Mostrar los usuarios de ms-security (con rol CIUDADANO) que NO tienen perfil en ms-logic
+              const unlinkedUsers = securityUsers.filter(user => !citizens.some(c => c.userId === user.id));
+              const renderUnlinkedUsers = unlinkedUsers.map(user => (
+                <tr key={`user-${user.id}`} className="hover:bg-slate-700/30 transition-colors bg-red-900/10 border-l-4 border-red-500">
+                  <td className="px-6 py-4">
+                    <div className="font-bold text-slate-400 text-base">{user.name}</div>
+                    <div className="text-xs text-red-400 font-bold mt-1">⚠️ Requiere crear perfil</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs bg-slate-800 text-slate-400 px-2 py-1 rounded border border-slate-700 font-mono">
+                      {user.email}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-slate-500 italic">No disponible</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-slate-500 italic">Sin billetera</span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
                     <button 
-                      onClick={() => setRechargeData({ id: citizen.id, amount: 10000 })}
-                      className="text-xs bg-slate-700 hover:bg-slate-600 text-white font-bold px-2 py-1 rounded"
+                      onClick={() => {
+                        const partes = user.name?.split(' ') || [''];
+                        setFormData({
+                          userId: user.id,
+                          nombres: partes[0] || '',
+                          apellidos: partes.slice(1).join(' ') || '',
+                          telefono: '',
+                          direccion: ''
+                        });
+                        setIsCreating(true);
+                        setEditingCitizen(null);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }} 
+                      className="text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded-md font-bold text-sm"
                     >
-                      + Recargar
+                      Crear Perfil
                     </button>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-right space-x-2">
-                  <button onClick={() => handleEdit(citizen)} className="text-blue-400 hover:text-blue-300 font-medium text-sm">Editar</button>
-                  <button onClick={() => handleDelete(citizen.id)} className="text-red-400 hover:text-red-300 font-medium text-sm">Eliminar</button>
-                </td>
-              </tr>
-            )})}
+                  </td>
+                </tr>
+              ));
+
+              const allRows = [...renderUnlinkedUsers, ...renderCitizens];
+              return allRows.length > 0 ? allRows : <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">No hay registros</td></tr>;
+            })()}
           </tbody>
         </table>
       </div>
