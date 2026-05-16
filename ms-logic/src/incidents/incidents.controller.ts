@@ -19,16 +19,16 @@ export class IncidentsController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.incidentsService.findOne(+id);
+    return this.incidentsService.findOne(id);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateIncidentDto: UpdateIncidentDto) {
-    return this.incidentsService.update(+id, updateIncidentDto);
+    return this.incidentsService.update(id, updateIncidentDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.incidentsService.remove(+id);
+    return this.incidentsService.remove(id);
   }
 }

@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import LoginForm from '../../components/auth/LoginForm'
 import OAuthButtons from '../../components/auth/OAuthButtons'
 import TwoFactorForm from '../../components/auth/TwoFactorForm'
+import { useToastStore } from '../../store/toastStore'
 
 /**
  * LoginPage es la página principal de autenticación
@@ -25,6 +26,13 @@ const LoginPage = () => {
   const errorFromUrl = searchParams.get('error') === 'expired' ? 'Sesión expirada o inválida' : null
   const errorFromState = location.state?.error as string | undefined
   const errorMessage = errorFromUrl || errorFromState
+
+  const addToast = useToastStore((s) => s.addToast)
+
+  useEffect(() => {
+    if (successMessage) addToast(successMessage, 'success')
+    if (errorMessage) addToast(errorMessage, 'error')
+  }, [successMessage, errorMessage])
 
   // Si ya está autenticado, redirige al dashboard
   useEffect(() => {
@@ -56,24 +64,6 @@ const LoginPage = () => {
 
         {/* Card principal */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-8">
-
-          {/* Mensaje de éxito (viene de registro o reset password) */}
-          {successMessage && (
-            <div className="mb-6 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-              <p className="text-sm text-green-600 dark:text-green-400">
-                {successMessage}
-              </p>
-            </div>
-          )}
-
-          {/* Mensaje de error (sesión expirada o acceso denegado) */}
-          {errorMessage && (
-            <div className="mb-6 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-              <p className="text-sm text-red-600 dark:text-red-400">
-                {errorMessage}
-              </p>
-            </div>
-          )}
 
           {/* Muestra 2FA o login normal según el estado */}
           {requires2FA ? (

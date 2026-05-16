@@ -6,7 +6,12 @@ import Input from '../common/Input';
 import Modal from '../common/Modal';
 import LoadingSpinner from '../common/LoadingSpinner';
 
-const DriverList = () => {
+interface DriverListProps {
+  onEdit?: (driver: Driver) => void;
+  refreshTrigger?: number;
+}
+
+const DriverList = ({ onEdit, refreshTrigger = 0 }: DriverListProps) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +34,7 @@ const DriverList = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [refreshTrigger]);
 
   const handleDelete = async () => {
     if (!driverToDelete?.id) return;
@@ -117,6 +122,11 @@ const DriverList = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
+                      {onEdit && (
+                        <Button variant="ghost" size="sm" onClick={() => onEdit(driver)}>
+                          Editar
+                        </Button>
+                      )}
                       <Button variant="danger" size="sm" onClick={() => setDriverToDelete(driver)}>
                         Eliminar
                       </Button>
