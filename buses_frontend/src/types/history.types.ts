@@ -1,0 +1,10 @@
+import type { Ticket } from './ticket.types';
+import type { Node } from './node.types';
+
+export interface HistoryEntry {
+  id: string;
+  fecha_hora: string;
+  tipo_validacion: 'ENTRADA' | 'SALIDA';
+  ticket?: Ticket;
+  node?: Node;
+}

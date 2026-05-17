@@ -83,9 +83,11 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
-      onRehydrateStorage: () => (state) => {
-        // Se llama cuando Zustand termina de leer el localStorage
-        // Es el momento seguro para que el router tome decisiones
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('Error during hydration:', error)
+        }
+        // Usamos el state que viene por parámetro para evitar error de inicialización circular
         state?.setHasHydrated(true)
       },
     }

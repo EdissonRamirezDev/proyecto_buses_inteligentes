@@ -1,49 +1,30 @@
-import { BusesIncident } from "../../buses_incidents/entities/buses_incident.entity";
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-
-// export enum TipoIncidente {
-//     MECANICO = 'MECANICO',
-//     ACCIDENTE = 'ACCIDENTE',
-//     RETRASO = 'RETRASO',
-//     PROBLEMA_PASAJEROS = 'PROBLEMA_PASAJEROS',
-//     OTRO = 'OTRO',
-// }
-
-// export enum GravedadIncidente {
-//     BAJO = 'BAJO',
-//     MEDIO = 'MEDIO',
-//     ALTO = 'ALTO',
-//     CRITICO = 'CRITICO',
-// }
-
-// export enum EstadoIncidente {
-//     PENDIENTE = 'PENDIENTE',
-//     EN_REVISION = 'EN_REVISION',
-//     RESUELTO = 'RESUELTO',
-// }
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn } from 'typeorm';
+import { Shift } from '../../shifts/entities/shift.entity';
+import { IncidentBus } from './incident-bus.entity';
 
 @Entity('incidents')
 export class Incident {
-    @PrimaryGeneratedColumn()
-    id?: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-    // @Column({ type: 'enum', enum: TipoIncidente })
-    @Column()
-    type?: String;
+  @Column()
+  titulo: string;
 
-    // @Column({ type: 'enum', enum: GravedadIncidente })
-    @Column()
-    severity?: String;
+  @Column('text')
+  descripcion: string;
 
-    @Column()
-    description?: string;
+  @Column({ type: 'enum', enum: ['MECANICO', 'ACCIDENTE', 'CONGESTION', 'PASAJERO', 'OTRO'] })
+  categoria: string;
 
-    @Column()
-    date?: String;
+  @Column({ type: 'enum', enum: ['REPORTADO', 'EN_REVISION', 'RESUELTO'], default: 'REPORTADO' })
+  estado: string;
 
-    @Column()
-    state?: String;
+  @CreateDateColumn()
+  fecha_reporte: Date;
 
-    @OneToMany(() => BusesIncident, (busIncident) => busIncident.incident)
-    busesIncidents?: BusesIncident[];
+  @ManyToOne(() => Shift, (shift) => shift.incidents, { onDelete: 'CASCADE' })
+  shift: Shift; // Para saber qué turno (y por tanto qué conductor y bus) lo reportó
+
+  @OneToMany(() => IncidentBus, (ib) => ib.incident)
+  incidentBuses: IncidentBus[];
 }

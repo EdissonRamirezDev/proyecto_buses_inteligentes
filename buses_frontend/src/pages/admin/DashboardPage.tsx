@@ -14,6 +14,11 @@ const DashboardPage = () => {
   const roles = user?.roles?.map(r => r.name.toUpperCase()) || []
   const isAdmin = roles.includes('ADMIN_SISTEMA') || roles.includes('ADMIN')
   const isConductor = roles.includes('CONDUCTOR')
+  const isCitizen = roles.includes('CIUDADANO')
+
+  const toggleDarkMode = () => {
+    document.documentElement.classList.toggle('dark')
+  }
   
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -50,6 +55,13 @@ const DashboardPage = () => {
                 onClick={() => navigate('/profile')}
               >
                 Mi perfil
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleDarkMode}
+              >
+                🌓
               </Button>
               <Button
                 variant="ghost"
@@ -122,12 +134,23 @@ const DashboardPage = () => {
 
           {/* Módulos Conductor */}
           {(isAdmin || isConductor) && (
+              <DashboardCard
+                to="/conductor/turno"
+                icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                title="Mi turno de conducción"
+                description="Control de tiempos y recorridos"
+                color="amber"
+              />
+            )}
+
+          {/* Módulos Ciudadano */}
+          {(isAdmin || isCitizen) && (
             <DashboardCard
-              to="/conductor/turno"
-              icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-              title="Mi turno de conducción"
-              description="Control de tiempos y recorridos"
-              color="amber"
+              to="/citizen/dashboard"
+              icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
+              title="Mi Panel Ciudadano"
+              description="Saldo, viajes y mis boletos"
+              color="indigo"
             />
           )}
 
@@ -153,6 +176,48 @@ const DashboardPage = () => {
             description="Asigna buses a rutas en fechas y horas"
             color="green"
           />
+          <DashboardCard
+            to="/admin/citizens"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
+            title="Gestión de Ciudadanos"
+            description="Administra perfiles y recarga de billeteras"
+            color="purple"
+          />
+          <DashboardCard
+            to="/admin/tickets"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>}
+            title="Venta de Boletos"
+            description="Audita compras y valida códigos QR"
+            color="teal"
+          />
+          <DashboardCard
+            to="/admin/history"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+            title="Historial de Viajes"
+            description="Auditoría de escaneos y validaciones"
+            color="indigo"
+          />
+          <DashboardCard
+            to="/admin/wallet"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>}
+            title="Billetera (Recargas)"
+            description="Recargas y auditoría financiera"
+            color="amber"
+          />
+          <DashboardCard
+            to="/admin/incidents"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
+            title="Centro de Incidentes"
+            description="Reportes operativos de la flota"
+            color="red"
+          />
+          <DashboardCard
+            to="/admin/analytics"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
+            title="Dashboard Analítico"
+            description="Estadísticas y monitor en vivo"
+            color="blue"
+          />
         </div>
       </main>
     </div>
@@ -166,7 +231,7 @@ interface DashboardCardProps {
   icon: React.ReactNode
   title: string
   description: string
-  color: 'blue' | 'purple' | 'green' | 'amber' | 'teal' | 'red'
+  color: 'blue' | 'purple' | 'green' | 'amber' | 'teal' | 'red' | 'indigo'
 }
 
 const colorMap = {
@@ -176,6 +241,7 @@ const colorMap = {
   amber: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',
   teal: 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400',
   red: 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400',
+  indigo: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400',
 }
 
 const DashboardCard = ({ to, icon, title, description, color }: DashboardCardProps) => {

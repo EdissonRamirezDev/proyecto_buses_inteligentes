@@ -1,7 +1,6 @@
 import { Gps } from "../../gps/entities/gps.entity";
 import { Shift } from "../../shifts/entities/shift.entity";
 import { Column, Entity, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
-import { BusesIncident } from "../../buses_incidents/entities/buses_incident.entity";
 import { Company } from "../../companies/entities/company.entity";
 
 @Entity('buses')
@@ -29,10 +28,7 @@ export class Bus {
     @OneToMany(() => Shift, (shift) => shift.bus)  
     shifts?: Shift[];
 
-    @OneToMany(() => BusesIncident, (busIncident) => busIncident.bus)  
-    busIncidents?: BusesIncident[];
-
     // Many to One relationships
-    @ManyToOne(() => Company, (company) => company.buses)
+    @ManyToOne(() => Company, (company) => company.buses, { onDelete: 'SET NULL', nullable: true })
     company?: Company;
 }

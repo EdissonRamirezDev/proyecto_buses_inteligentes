@@ -24,9 +24,19 @@ import ShiftsPage from '../pages/admin/ShiftsPage'
 import RoutesPage from '../pages/admin/RoutesPage'
 import BusStopsPage from '../pages/admin/BusStopsPage'
 import SchedulesPage from '../pages/admin/SchedulesPage'
+import CitizensPage from '../pages/admin/CitizensPage'
+import TicketsPage from '../pages/admin/TicketsPage'
+import HistoryPage from '../pages/admin/HistoryPage'
+import WalletPage from '../pages/admin/WalletPage'
+import IncidentsPage from '../pages/admin/IncidentsPage'
+import AnalyticsPage from '../pages/admin/AnalyticsPage'
 
-// Pages - Driver
-import ActiveShiftPage from '../pages/driver/ActiveShiftPage'
+// Pages - Citizen
+import CitizenDashboard from '../pages/citizen/CitizenDashboard'
+import CitizenRoutes from '../pages/citizen/CitizenRoutes'
+
+// Pages - Conductor
+import ConductorShift from '../pages/conductor/ConductorShift'
 
 // Pages - Errors
 import NotFoundPage from '../pages/errors/NotFoundPage'
@@ -62,9 +72,19 @@ const AppRouter = () => {
         <Route path="/admin/routes" element={<RoutesPage />} />
         <Route path="/admin/bus-stops" element={<BusStopsPage />} />
         <Route path="/admin/schedules" element={<SchedulesPage />} />
+        <Route path="/admin/citizens" element={<CitizensPage />} />
+        <Route path="/admin/tickets" element={<TicketsPage />} />
+        <Route path="/admin/history" element={<HistoryPage />} />
+        
+        {/* Entregable 2 */}
+        <Route path="/admin/wallet" element={<WalletPage />} />
+        <Route path="/admin/incidents" element={<IncidentsPage />} />
+        <Route path="/admin/analytics" element={<AnalyticsPage />} />
 
-        {/* Rutas de Conductor */}
-        <Route path="/conductor/turno" element={<ActiveShiftPage />} />
+        {/* Rutas de Rol Específico */}
+        <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
+        <Route path="/citizen/routes" element={<CitizenRoutes />} />
+        <Route path="/conductor/turno" element={<ConductorShift />} />
       </Route>
 
       {/* ── Rutas de error ── */}

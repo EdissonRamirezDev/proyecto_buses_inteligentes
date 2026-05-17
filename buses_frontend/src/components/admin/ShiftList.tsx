@@ -6,7 +6,12 @@ import Input from '../common/Input';
 import Modal from '../common/Modal';
 import LoadingSpinner from '../common/LoadingSpinner';
 
-const ShiftList = () => {
+interface ShiftListProps {
+  onEdit?: (shift: Shift) => void;
+  refreshTrigger?: number;
+}
+
+const ShiftList = ({ onEdit, refreshTrigger = 0 }: ShiftListProps) => {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +34,7 @@ const ShiftList = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [refreshTrigger]);
 
   const handleDelete = async () => {
     if (!shiftToDelete?.id) return;
@@ -126,6 +131,11 @@ const ShiftList = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
+                      {onEdit && (
+                        <Button variant="ghost" size="sm" onClick={() => onEdit(shift)}>
+                          Editar
+                        </Button>
+                      )}
                       <Button variant="danger" size="sm" onClick={() => setShiftToDelete(shift)}>
                         Eliminar
                       </Button>

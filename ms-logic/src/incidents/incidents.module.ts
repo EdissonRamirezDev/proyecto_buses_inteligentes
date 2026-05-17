@@ -1,18 +1,15 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { IncidentsService } from './incidents.service';
 import { IncidentsController } from './incidents.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { Incident } from './entities/incident.entity';
-import { BusesIncident } from 'src/buses_incidents/entities/buses_incident.entity';
-import { HttpModule } from '@nestjs/axios';
+import { IncidentBus } from './entities/incident-bus.entity';
+import { Photo } from './entities/photo.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Incident, BusesIncident]),
-    HttpModule
-  ],
+  imports: [TypeOrmModule.forFeature([Incident, IncidentBus, Photo])],
   controllers: [IncidentsController],
   providers: [IncidentsService],
-  exports: [IncidentsService],
+  exports: [IncidentsService]
 })
 export class IncidentsModule {}

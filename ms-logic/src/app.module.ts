@@ -14,6 +14,11 @@ import { BusStopsModule } from './bus-stops/bus-stops.module';
 import { NodesModule } from './nodes/nodes.module';
 import { SchedulesModule } from './schedules/schedules.module';
 import { CompanyDriversModule } from './company_drivers/company_drivers.module';
+import { CitizensModule } from './citizens/citizens.module';
+import { TicketsModule } from './tickets/tickets.module';
+import { HistoryModule } from './history/history.module';
+import { MessagesModule } from './messages/messages.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -45,6 +50,11 @@ import { CompanyDriversModule } from './company_drivers/company_drivers.module';
     NodesModule,
     SchedulesModule,
     CompanyDriversModule,
+    CitizensModule,
+    TicketsModule,
+    HistoryModule,
+    MessagesModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}
