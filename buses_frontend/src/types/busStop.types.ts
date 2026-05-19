@@ -4,6 +4,5 @@ export interface BusStop {
   nombre: string;
   latitud: number;
   longitud: number;
-  tipo: string;
   sentido?: string;
 }

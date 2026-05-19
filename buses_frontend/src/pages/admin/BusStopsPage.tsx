@@ -28,7 +28,7 @@ const BusStopsPage = () => {
   const navigate = useNavigate();
   const [busStops, setBusStops] = useState<BusStop[]>([]);
   const [isCreating, setIsCreating] = useState(false);
-  const [formData, setFormData] = useState({ nombre: '', tipo: 'regular', sentido: 'N/A' });
+  const [formData, setFormData] = useState({ nombre: '', sentido: 'N/A' });
   const [position, setPosition] = useState<L.LatLng | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
@@ -75,13 +75,12 @@ const BusStopsPage = () => {
     try {
       await createBusStop({
         nombre: formData.nombre,
-        tipo: formData.tipo,
         sentido: formData.sentido,
         latitud: position.lat,
         longitud: position.lng,
       });
       setIsCreating(false);
-      setFormData({ nombre: '', tipo: 'regular', sentido: 'N/A' });
+      setFormData({ nombre: '', sentido: 'N/A' });
       setPosition(null);
       fetchBusStops();
     } catch (error) {
@@ -128,17 +127,7 @@ const BusStopsPage = () => {
                   placeholder="Ej: Estación Central"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300">Tipo de Paradero</label>
-                <select
-                  value={formData.tipo} onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
-                  className="mt-1 block w-full rounded-lg bg-slate-700 border-slate-600 text-white p-3 border"
-                >
-                  <option value="regular">Regular</option>
-                  <option value="principal">Principal</option>
-                  <option value="terminal">Terminal</option>
-                </select>
-              </div>
+
               <div>
                 <label className="block text-sm font-medium text-slate-300">Sentido</label>
                 <select
@@ -177,7 +166,7 @@ const BusStopsPage = () => {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Código</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Nombre</th>
-              <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Tipo / Sentido</th>
+              <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Sentido</th>
               <th className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Coordenadas</th>
               <th className="px-6 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-widest">Acciones</th>
             </tr>
@@ -189,16 +178,12 @@ const BusStopsPage = () => {
                 <td className="px-6 py-4 text-sm text-white font-medium">{stop.nombre}</td>
                 <td className="px-6 py-4 text-sm">
                   <div className="flex flex-col gap-1 items-start">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
-                      stop.tipo === 'terminal' ? 'bg-purple-900 text-purple-300' : 
-                      stop.tipo === 'principal' ? 'bg-amber-900 text-amber-300' : 'bg-slate-600 text-slate-300'
-                    }`}>
-                      {stop.tipo}
-                    </span>
-                    {stop.sentido && stop.sentido !== 'N/A' && (
+                    {stop.sentido && stop.sentido !== 'N/A' ? (
                       <span className="text-[10px] text-slate-400 border border-slate-600 px-2 py-0.5 rounded">
                         {stop.sentido}
                       </span>
+                    ) : (
+                      <span className="text-slate-500 italic text-xs">Bidireccional</span>
                     )}
                   </div>
                 </td>

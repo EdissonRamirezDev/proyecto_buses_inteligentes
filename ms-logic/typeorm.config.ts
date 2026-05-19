@@ -10,7 +10,7 @@ const dataSource = new DataSource({
   database: process.env.DB_NAME,
   // Para CLI (ts-node) y para runtime compilado (dist)
   entities: ['src/**/*.entity{.ts,.js}', 'dist/**/*.entity.js'],
-  migrations: ['src/migrations/*{.ts,.js}', 'dist/migrations/*.js'],
+  migrations: ['src/database/migrations/*{.ts,.js}', 'dist/database/migrations/*.js'],
   synchronize: false,
 });
 
