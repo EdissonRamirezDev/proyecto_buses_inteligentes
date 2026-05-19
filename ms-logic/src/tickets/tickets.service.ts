@@ -4,6 +4,7 @@ import { Repository, DataSource } from 'typeorm';
 import { Ticket } from './entities/ticket.entity';
 import { Citizen } from '../citizens/entities/citizen.entity';
 import { Schedule } from '../schedules/entities/schedule.entity';
+import { CitizenPaymentMethod } from '../citizen-payment-methods/entities/citizen-payment-method.entity';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -15,7 +16,7 @@ export class TicketsService {
     private dataSource: DataSource
   ) {}
 
-  async purchaseTicket(citizenId: string, scheduleId: string): Promise<Ticket> {
+  async purchaseTicket(citizenId: string, scheduleId: string, citizenPaymentMethodId?: string): Promise<Ticket> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -31,6 +32,16 @@ export class TicketsService {
       });
       if (!schedule) throw new NotFoundException('Despacho no encontrado');
       if (!schedule.route) throw new BadRequestException('El despacho no tiene una ruta asignada con tarifa');
+
+      let citizenPaymentMethod: CitizenPaymentMethod | null = null;
+      if (citizenPaymentMethodId) {
+        citizenPaymentMethod = await queryRunner.manager.findOne(CitizenPaymentMethod, {
+          where: { id: citizenPaymentMethodId, citizen: { id: citizenId } }
+        });
+        if (!citizenPaymentMethod) {
+          throw new NotFoundException('Método de pago del ciudadano no encontrado o no le pertenece');
+        }
+      }
 
       const tarifa = Number(schedule.route.tarifa);
       const saldoActual = Number(citizen.saldo);
@@ -51,6 +62,9 @@ export class TicketsService {
       ticket.precio_pagado = tarifa;
       ticket.citizen = citizen;
       ticket.schedule = schedule;
+      if (citizenPaymentMethod) {
+        ticket.citizenPaymentMethod = citizenPaymentMethod;
+      }
 
       const savedTicket = await queryRunner.manager.save(ticket);
 

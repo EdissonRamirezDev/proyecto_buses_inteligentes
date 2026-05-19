@@ -286,7 +286,8 @@ const CitizensPage = () => {
                           nombres: partes[0] || '',
                           apellidos: partes.slice(1).join(' ') || '',
                           telefono: '',
-                          direccion: ''
+                          direccion: '',
+                          fecha_nacimiento: ''
                         });
                         setIsCreating(true);
                         setEditingCitizen(null);

@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, OneToOne } from 'typeorm';
 import { Ticket } from '../../tickets/entities/ticket.entity';
 import { WalletTransaction } from './wallet-transaction.entity';
-import { CitizenPaymentMethod } from './citizen-payment-method.entity';
+import { CitizenPaymentMethod } from '../../citizen-payment-methods/entities/citizen-payment-method.entity';
+import { Address } from '../../addresses/entities/address.entity';
 
 @Entity('citizens')
 export class Citizen {
@@ -22,6 +23,9 @@ export class Citizen {
 
   @Column({ nullable: true })
   direccion: string;
+
+  @OneToOne(() => Address, (address) => address.citizen)
+  address?: Address;
 
   @Column({ type: 'date', nullable: true })
   fecha_nacimiento: string;

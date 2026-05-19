@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store';
-import { getCitizens } from '../../services/citizensService';
+import { getCitizens, createCitizen } from '../../services/citizensService';
 import { getTransactions } from '../../services/walletService';
 import type { WalletTransaction } from '../../services/walletService';
 import { getTickets } from '../../services/ticketsService';
-import { httpBusiness } from '../../services/http';
 import type { Citizen } from '../../types/citizen.types';
 import type { Ticket } from '../../types/ticket.types';
 import Button from '../../components/common/Button';
@@ -34,6 +33,27 @@ const CitizenDashboard = () => {
           setTransactions(txs);
           // Filtrar solo los boletos de este ciudadano
           setTickets(tkts.filter((t: any) => t.citizen?.id === myCitizen.id));
+        } else if (user) {
+          // Si no existe el perfil de ciudadano en ms-logic, lo auto-aprovisionamos en segundo plano
+          try {
+            const names = user.name ? user.name.split(' ') : ['Ciudadano'];
+            const nombres = names[0];
+            const apellidos = names.slice(1).join(' ') || 'Registrado';
+
+            const newCitizen = await createCitizen({
+              userId: user.id,
+              nombres,
+              apellidos,
+              telefono: '',
+              direccion: 'Sin dirección registrada',
+              fecha_nacimiento: new Date().toISOString().split('T')[0]
+            });
+            setCitizen(newCitizen);
+            setTransactions([]);
+            setTickets([]);
+          } catch (err) {
+            console.error('Error auto-provisioning citizen profile:', err);
+          }
         }
       } catch (error) {
         console.error('Error loading citizen data:', error);

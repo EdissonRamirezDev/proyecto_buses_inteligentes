@@ -8,8 +8,8 @@ export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 
   @Post('purchase')
-  purchaseTicket(@Body() body: { citizenId: string, scheduleId: string }) {
-    return this.ticketsService.purchaseTicket(body.citizenId, body.scheduleId);
+  purchaseTicket(@Body() body: { citizenId: string, scheduleId: string, citizenPaymentMethodId?: string }) {
+    return this.ticketsService.purchaseTicket(body.citizenId, body.scheduleId, body.citizenPaymentMethodId);
   }
 
   @Get()

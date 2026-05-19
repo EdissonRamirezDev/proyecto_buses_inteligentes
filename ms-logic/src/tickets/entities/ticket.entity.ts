@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDat
 import { Citizen } from '../../citizens/entities/citizen.entity';
 import { Schedule } from '../../schedules/entities/schedule.entity';
 import { History } from '../../history/entities/history.entity';
+import { CitizenPaymentMethod } from '../../citizen-payment-methods/entities/citizen-payment-method.entity';
 
 @Entity('tickets')
 export class Ticket {
@@ -25,6 +26,9 @@ export class Ticket {
 
   @ManyToOne(() => Schedule, (schedule) => schedule.tickets, { onDelete: 'CASCADE' })
   schedule: Schedule;
+
+  @ManyToOne(() => CitizenPaymentMethod, (cpm) => cpm.tickets, { nullable: true, onDelete: 'SET NULL' })
+  citizenPaymentMethod?: CitizenPaymentMethod;
 
   @OneToMany(() => History, (history) => history.ticket)
   history: History[];

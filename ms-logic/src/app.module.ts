@@ -18,6 +18,9 @@ import { TicketsModule } from './tickets/tickets.module';
 import { HistoryModule } from './history/history.module';
 import { MessagesModule } from './messages/messages.module';
 import { ReportsModule } from './reports/reports.module';
+import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
+import { CitizenPaymentMethodsModule } from './citizen-payment-methods/citizen-payment-methods.module';
+import { AddressesModule } from './addresses/addresses.module';
 
 @Module({
   imports: [
@@ -53,6 +56,9 @@ import { ReportsModule } from './reports/reports.module';
     HistoryModule,
     MessagesModule,
     ReportsModule,
+    PaymentMethodsModule,
+    CitizenPaymentMethodsModule,
+    AddressesModule,
   ],
 })
 export class AppModule {}

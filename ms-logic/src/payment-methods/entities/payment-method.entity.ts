@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { CitizenPaymentMethod } from './citizen-payment-method.entity';
+import { CitizenPaymentMethod } from '../../citizen-payment-methods/entities/citizen-payment-method.entity';
 
 @Entity('payment_methods')
 export class PaymentMethod {

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getCitizens } from '../../services/citizensService';
 import { rechargeWallet, getTransactions } from '../../services/walletService';
 import type { WalletTransaction } from '../../services/walletService';
@@ -6,6 +7,7 @@ import type { Citizen } from '../../types/citizen.types';
 import Button from '../../components/common/Button';
 
 const WalletPage = () => {
+  const navigate = useNavigate();
   const [citizens, setCitizens] = useState<Citizen[]>([]);
   const [selectedCitizen, setSelectedCitizen] = useState<Citizen | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
@@ -74,7 +76,12 @@ const WalletPage = () => {
 
   return (
     <div className="p-6 bg-slate-900 min-h-screen text-slate-100">
-      <h1 className="text-3xl font-bold text-white mb-8">Billetera Electrónica (Recargas)</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-white">Billetera Electrónica (Recargas)</h1>
+        <Button onClick={() => navigate('/dashboard')} className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700">
+          ← Volver
+        </Button>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
