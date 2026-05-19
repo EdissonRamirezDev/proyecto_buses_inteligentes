@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getIncidents, createIncident, updateIncidentStatus } from '../../services/incidentsService';
 import type { Incident } from '../../services/incidentsService';
-import { getShifts } from '../../services/shiftService'; // Asumiendo que existe o lo crearemos
 import { httpBusiness } from '../../services/http';
 import Button from '../../components/common/Button';
 
 const IncidentsPage = () => {
+  const navigate = useNavigate();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -72,7 +73,12 @@ const IncidentsPage = () => {
   return (
     <div className="p-6 bg-slate-900 min-h-screen text-slate-100">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-white">Centro de Incidentes</h1>
+        <div className="flex items-center gap-4">
+          <Button onClick={() => navigate('/dashboard')} className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700">
+            ← Volver
+          </Button>
+          <h1 className="text-3xl font-bold text-white">Centro de Incidentes</h1>
+        </div>
         <Button onClick={() => setIsModalOpen(true)} className="bg-red-600 hover:bg-red-700">
           + Reportar Incidente
         </Button>

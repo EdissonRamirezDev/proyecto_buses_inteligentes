@@ -1,8 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getRoutes } from '../../services/routesService';
-import { getBusStops } from '../../services/busStopsService';
 import type { Route } from '../../types/route.types';
-import type { BusStop } from '../../types/busStop.types';
 import Button from '../../components/common/Button';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
