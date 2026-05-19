@@ -15,10 +15,10 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const LocationMarker = ({ position, setPosition }: { position: L.LatLng | null, setPosition: (pos: L.LatLng) => void }) => {
+const LocationMarker = ({ position, onLocationSelect }: { position: L.LatLng | null, onLocationSelect: (pos: L.LatLng) => void }) => {
   useMapEvents({
     click(e) {
-      setPosition(e.latlng);
+      onLocationSelect(e.latlng);
     },
   });
   return position === null ? null : <Marker position={position}></Marker>;
@@ -30,6 +30,28 @@ const BusStopsPage = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({ nombre: '', tipo: 'regular', sentido: 'N/A' });
   const [position, setPosition] = useState<L.LatLng | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+
+  const fetchNeighborhood = async (lat: number, lng: number) => {
+    setIsLocating(true);
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const data = await response.json();
+      const barrio = data.address?.neighbourhood || data.address?.suburb || data.address?.village || data.address?.city_district;
+      if (barrio) {
+        setFormData(prev => ({ ...prev, nombre: `Paradero ${barrio}` }));
+      }
+    } catch (error) {
+      console.error('Error fetching neighborhood:', error);
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  const handleLocationSelect = (latlng: L.LatLng) => {
+    setPosition(latlng);
+    fetchNeighborhood(latlng.lat, latlng.lng);
+  };
 
   const fetchBusStops = async () => {
     try {
@@ -134,6 +156,7 @@ const BusStopsPage = () => {
                 <div className="p-3 bg-blue-900/30 border border-blue-800 rounded-lg text-sm text-blue-300">
                   <p><strong>Ubicación capturada:</strong></p>
                   <p>Lat: {position.lat.toFixed(6)} | Lng: {position.lng.toFixed(6)}</p>
+                  {isLocating && <p className="text-amber-400 mt-1 animate-pulse">Buscando barrio automáticamente...</p>}
                 </div>
               )}
               <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">Guardar Paradero</Button>
@@ -141,7 +164,7 @@ const BusStopsPage = () => {
             <div className="h-64 rounded-xl overflow-hidden border border-slate-700 shadow-inner">
               <MapContainer center={[4.6097, -74.0817]} zoom={13} style={{ height: '100%', width: '100%' }}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                <LocationMarker position={position} setPosition={setPosition} />
+                <LocationMarker position={position} onLocationSelect={handleLocationSelect} />
               </MapContainer>
             </div>
           </form>

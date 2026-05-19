@@ -1,4 +1,4 @@
-import { IsNumber, IsUUID, Min } from 'class-validator';
+import { IsArray, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
 
 export class CreateNodeDto {
   @IsNumber()
@@ -18,4 +18,8 @@ export class CreateNodeDto {
 
   @IsUUID()
   busStopId: string;
+
+  @IsArray()
+  @IsOptional()
+  via_points?: [number, number][];
 }

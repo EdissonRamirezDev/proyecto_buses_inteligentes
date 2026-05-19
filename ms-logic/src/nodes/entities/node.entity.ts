@@ -25,4 +25,7 @@ export class Node {
 
   @ManyToOne(() => BusStop, (busStop) => busStop.nodes, { onDelete: 'CASCADE' })
   busStop: BusStop;
+
+  @Column({ type: 'simple-json', nullable: true })
+  via_points?: [number, number][];
 }

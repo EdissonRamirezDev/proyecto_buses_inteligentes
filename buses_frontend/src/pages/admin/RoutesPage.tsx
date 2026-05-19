@@ -6,7 +6,7 @@ import type { Route } from '../../types/route.types';
 import type { BusStop } from '../../types/busStop.types';
 import Button from '../../components/common/Button';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, Popup, useMapEvents, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -155,9 +155,26 @@ const RoutesPage = () => {
     }
   };
 
-  // OSRM Map Routing
+  // OSRM Map Routing with via_points support
   const [osrmPositions, setOsrmPositions] = useState<[number, number][]>([]);
   const [isMapLoading, setIsMapLoading] = useState(false);
+  const [addingWaypointNodeId, setAddingWaypointNodeId] = useState<string | null>(null);
+
+  // Build the OSRM coordinate string intercalating via_points between stops
+  const buildOSRMCoordinates = (nodes: any[]): string => {
+    const coords: string[] = [];
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      coords.push(`${Number(node.busStop!.longitud)},${Number(node.busStop!.latitud)}`);
+      // Add via_points for the segment AFTER this stop (before the next stop)
+      if (node.via_points && node.via_points.length > 0 && i < nodes.length - 1) {
+        node.via_points.forEach((vp: [number, number]) => {
+          coords.push(`${vp[1]},${vp[0]}`); // vp is [lat, lon], OSRM needs lon,lat
+        });
+      }
+    }
+    return coords.join(';');
+  };
 
   useEffect(() => {
     const fetchOSRM = async () => {
@@ -168,13 +185,12 @@ const RoutesPage = () => {
       }
       setIsMapLoading(true);
       try {
-        const coordinatesString = nodes.map(n => `${Number(n.busStop!.longitud)},${Number(n.busStop!.latitud)}`).join(';');
+        const coordinatesString = buildOSRMCoordinates(nodes);
         const url = `https://router.project-osrm.org/route/v1/driving/${coordinatesString}?overview=full&geometries=geojson`;
         const response = await fetch(url);
         const data = await response.json();
         
         if (data.code === 'Ok' && data.routes.length > 0) {
-          // OSRM returns [lon, lat], Leaflet needs [lat, lon]
           const mappedPositions = data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
           setOsrmPositions(mappedPositions);
         } else {
@@ -190,6 +206,79 @@ const RoutesPage = () => {
 
     fetchOSRM();
   }, [selectedRoute?.nodes]);
+
+  // Handle adding a waypoint when clicking the map
+  const handleAddWaypoint = async (lat: number, lng: number) => {
+    if (!addingWaypointNodeId || !selectedRoute?.nodes) return;
+    const node = selectedRoute.nodes.find(n => n.id === addingWaypointNodeId);
+    if (!node) return;
+
+    const currentViaPoints = node.via_points || [];
+    const newViaPoints = [...currentViaPoints, [lat, lng] as [number, number]];
+
+    try {
+      await updateNode(node.id, { via_points: newViaPoints } as any);
+      setAddingWaypointNodeId(null);
+      fetchData();
+    } catch (error) {
+      console.error('Error adding waypoint:', error);
+    }
+  };
+
+  // Handle dragging an existing waypoint to a new position
+  const handleDragWaypoint = async (nodeId: string, waypointIndex: number, newLat: number, newLng: number) => {
+    if (!selectedRoute?.nodes) return;
+    const node = selectedRoute.nodes.find(n => n.id === nodeId);
+    if (!node || !node.via_points) return;
+
+    const newViaPoints = [...node.via_points];
+    newViaPoints[waypointIndex] = [newLat, newLng];
+
+    try {
+      await updateNode(node.id, { via_points: newViaPoints } as any);
+      fetchData();
+    } catch (error) {
+      console.error('Error updating waypoint:', error);
+    }
+  };
+
+  // Handle deleting a specific waypoint
+  const handleDeleteWaypoint = async (nodeId: string, waypointIndex: number) => {
+    if (!selectedRoute?.nodes) return;
+    const node = selectedRoute.nodes.find(n => n.id === nodeId);
+    if (!node || !node.via_points) return;
+
+    const newViaPoints = node.via_points.filter((_: [number, number], i: number) => i !== waypointIndex);
+
+    try {
+      await updateNode(node.id, { via_points: newViaPoints.length > 0 ? newViaPoints : null } as any);
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting waypoint:', error);
+    }
+  };
+
+  // Map click handler component
+  const MapClickHandler = () => {
+    useMapEvents({
+      click(e) {
+        if (addingWaypointNodeId) {
+          handleAddWaypoint(e.latlng.lat, e.latlng.lng);
+        }
+      },
+    });
+    return null;
+  };
+
+  // Waypoint icon
+  const waypointIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [20, 33],
+    iconAnchor: [10, 33],
+    popupAnchor: [1, -28],
+    shadowSize: [33, 33],
+  });
 
   // Fallback to straight lines if OSRM fails or has < 2 nodes
   const polylinePositions: [number, number][] = osrmPositions.length > 0 
@@ -275,6 +364,24 @@ const RoutesPage = () => {
                   </div>
                 </div>
 
+                {/* Waypoint Mode Banner */}
+                {addingWaypointNodeId && (
+                  <div className="bg-orange-600/20 border border-orange-500 rounded-lg px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-orange-400 text-lg">📍</span>
+                      <span className="text-orange-300 text-sm font-semibold">
+                        Modo desvío activo — Haz clic en el mapa para colocar un punto de control
+                      </span>
+                    </div>
+                    <button 
+                      onClick={() => setAddingWaypointNodeId(null)}
+                      className="text-orange-400 hover:text-white text-xs font-bold bg-orange-900/50 hover:bg-orange-900 px-3 py-1 rounded transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+
                 {/* Interactive Map */}
                 <div className="h-[400px] rounded-xl overflow-hidden border border-slate-700 relative">
                   {isMapLoading && (
@@ -287,6 +394,7 @@ const RoutesPage = () => {
                   )}
                   <MapContainer center={[4.6097, -74.0817]} zoom={12} style={{ height: '100%', width: '100%' }}>
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <MapClickHandler />
                     
                     {/* Render All Bus Stops (Clickable to add) */}
                     {busStops.map((stop) => {
@@ -309,6 +417,10 @@ const RoutesPage = () => {
                           icon={customIcon}
                           eventHandlers={{ click: () => handleMapMarkerClick(stop) }}
                         >
+                          <Tooltip direction="top" offset={[0, -20]}>
+                            <div className="font-bold text-slate-800">{stop.nombre}</div>
+                            <div className="text-xs text-slate-500">{stop.tipo} {stop.sentido !== 'N/A' ? `| ${stop.sentido}` : ''}</div>
+                          </Tooltip>
                           <Popup className="dark-popup">
                             <strong className="text-slate-900">{stop.nombre}</strong><br/>
                             {isSelected ? <span className="text-green-600 font-bold">✓ En Ruta</span> : <span className="text-blue-600">Clic para agregar</span>}
@@ -316,6 +428,43 @@ const RoutesPage = () => {
                         </Marker>
                       );
                     })}
+
+                    {/* Render draggable Waypoint markers (orange) */}
+                    {selectedRoute.nodes?.filter(n => n.busStop).map((node, nodeIndex, nodesArray) => (
+                      node.via_points && node.via_points.map((vp: [number, number], vpIdx: number) => {
+                        const nextNode = nodesArray[nodeIndex + 1];
+                        const nextStopName = nextNode?.busStop?.nombre || 'Fin de ruta';
+                        return (
+                          <Marker
+                            key={`wp-${node.id}-${vpIdx}`}
+                            position={[vp[0], vp[1]]}
+                            icon={waypointIcon}
+                            draggable={true}
+                            eventHandlers={{
+                              dragend: (e) => {
+                                const marker = e.target;
+                                const pos = marker.getLatLng();
+                                handleDragWaypoint(node.id, vpIdx, pos.lat, pos.lng);
+                              },
+                            }}
+                          >
+                            <Popup>
+                              <div className="text-center">
+                                <strong className="text-orange-600">Desvío #{vpIdx + 1}</strong><br/>
+                                <span className="text-xs font-semibold text-slate-700">Conecta:</span><br/>
+                                <span className="text-xs text-gray-600">{node.busStop?.nombre} ➔ {nextStopName}</span><br/>
+                              <button
+                                onClick={() => handleDeleteWaypoint(node.id, vpIdx)}
+                                style={{ color: 'red', fontWeight: 'bold', cursor: 'pointer', marginTop: '4px', fontSize: '12px', background: 'none', border: 'none' }}
+                              >
+                                🗑️ Eliminar desvío
+                              </button>
+                            </div>
+                          </Popup>
+                        </Marker>
+                        );
+                      })
+                    ))}
 
                     {polylinePositions.length > 1 && <Polyline positions={polylinePositions} color={selectedRoute.color_hex || "#3b82f6"} weight={5} opacity={0.8} />}
                   </MapContainer>
@@ -326,29 +475,65 @@ const RoutesPage = () => {
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">Orden de Recorrido</h3>
                   {selectedRoute.nodes && selectedRoute.nodes.length > 0 ? (
                     selectedRoute.nodes.map((node, index) => (
-                      <div key={node.id} className="bg-slate-800 p-3 rounded-lg border border-slate-600 flex items-center justify-between group">
-                        <div className="flex items-center gap-4">
-                          <span className="bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-lg" style={{ backgroundColor: selectedRoute.color_hex || '#3b82f6' }}>
-                            {node.orden}
-                          </span>
-                          <div>
-                            <div className="text-sm font-bold text-white">{node.busStop?.nombre}</div>
-                            <div className="text-xs text-slate-400">Distancia: {node.distancia_anterior}m • Tiempo: {node.tiempo_estimado} min</div>
+                      <div key={node.id} className="space-y-1">
+                        <div className="bg-slate-800 p-3 rounded-lg border border-slate-600 flex items-center justify-between group">
+                          <div className="flex items-center gap-4">
+                            <span className="bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-lg" style={{ backgroundColor: selectedRoute.color_hex || '#3b82f6' }}>
+                              {node.orden}
+                            </span>
+                            <div>
+                              <div className="text-sm font-bold text-white">{node.busStop?.nombre}</div>
+                              <div className="text-xs text-slate-400">Distancia: {node.distancia_anterior}m • Tiempo: {node.tiempo_estimado} min</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Waypoint button - only show if not the last node */}
+                            {index < selectedRoute.nodes!.length - 1 && (
+                              <button 
+                                onClick={() => setAddingWaypointNodeId(addingWaypointNodeId === node.id ? null : node.id)}
+                                className={`text-xs font-bold px-2 py-1 rounded transition-colors ${
+                                  addingWaypointNodeId === node.id 
+                                    ? 'bg-orange-500 text-white' 
+                                    : 'text-orange-400 hover:text-orange-300 bg-orange-400/10'
+                                }`}
+                                title="Agregar punto de desvío después de este paradero"
+                              >
+                                📍 Desvío
+                              </button>
+                            )}
+                            <div className="flex flex-col">
+                              <button onClick={() => handleSwapOrder(index, 'up')} disabled={index === 0} className="text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed px-2">
+                                ▲
+                              </button>
+                              <button onClick={() => handleSwapOrder(index, 'down')} disabled={index === selectedRoute.nodes!.length - 1} className="text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed px-2">
+                                ▼
+                              </button>
+                            </div>
+                            <button onClick={() => handleDeleteNode(node.id)} className="text-red-400 hover:text-red-300 ml-2 p-2 bg-red-400/10 rounded">
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="flex flex-col">
-                            <button onClick={() => handleSwapOrder(index, 'up')} disabled={index === 0} className="text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed px-2">
-                              ▲
-                            </button>
-                            <button onClick={() => handleSwapOrder(index, 'down')} disabled={index === selectedRoute.nodes!.length - 1} className="text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed px-2">
-                              ▼
-                            </button>
+                        {/* Show via_points for this node segment */}
+                        {node.via_points && node.via_points.length > 0 && (
+                          <div className="ml-10 space-y-1">
+                            {node.via_points.map((vp: [number, number], vpIdx: number) => (
+                              <div key={vpIdx} className="bg-orange-900/20 border border-orange-800/40 px-3 py-1.5 rounded-lg flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-orange-400">📍</span>
+                                  <span className="text-orange-300 font-medium">Desvío #{vpIdx + 1}</span>
+                                  <span className="text-slate-500">({vp[0].toFixed(5)}, {vp[1].toFixed(5)})</span>
+                                </div>
+                                <button 
+                                  onClick={() => handleDeleteWaypoint(node.id, vpIdx)}
+                                  className="text-red-400 hover:text-red-300 font-bold"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
                           </div>
-                          <button onClick={() => handleDeleteNode(node.id)} className="text-red-400 hover:text-red-300 ml-2 p-2 bg-red-400/10 rounded">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                          </button>
-                        </div>
+                        )}
                       </div>
                     ))
                   ) : (
