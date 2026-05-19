@@ -8,4 +8,5 @@ export interface Node {
   tiempo_estimado: number;
   route?: Route;
   busStop?: BusStop;
+  via_points?: [number, number][];
 }

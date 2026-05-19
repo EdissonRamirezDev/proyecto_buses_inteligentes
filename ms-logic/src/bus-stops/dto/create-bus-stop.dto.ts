@@ -13,9 +13,6 @@ export class CreateBusStopDto {
   @IsLongitude()
   longitud: number;
 
-  @IsString()
-  @IsOptional()
-  tipo?: string;
 
   @IsString()
   @IsOptional()

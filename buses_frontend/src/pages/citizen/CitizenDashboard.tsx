@@ -11,11 +11,13 @@ import { useNavigate } from 'react-router-dom';
 
 const CitizenDashboard = () => {
   const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const [citizen, setCitizen] = useState<Citizen | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -85,8 +87,8 @@ const CitizenDashboard = () => {
               <p className="text-indigo-200 text-sm">Bienvenido de vuelta,</p>
               <h1 className="text-3xl font-bold text-white">{citizen?.nombres} {citizen?.apellidos}</h1>
             </div>
-            <Button onClick={() => navigate('/dashboard')} className="bg-white/20 hover:bg-white/30 backdrop-blur-sm">
-              ← Panel General
+            <Button onClick={() => { logout(); navigate('/login'); }} className="bg-red-600/80 hover:bg-red-700 text-white font-bold">
+              Cerrar Sesión
             </Button>
           </div>
         </div>
@@ -99,7 +101,7 @@ const CitizenDashboard = () => {
           <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-lg">
             <p className="text-slate-400 text-sm mb-1">Saldo Disponible</p>
             <p className="text-4xl font-bold text-emerald-400">${Number(citizen?.saldo || 0).toLocaleString()}</p>
-            <Button onClick={() => navigate('/admin/wallet')} className="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-sm">
+            <Button onClick={() => navigate('/citizen/wallet')} className="mt-4 w-full bg-emerald-600 hover:bg-emerald-500 text-sm">
               Recargar Billetera
             </Button>
           </div>
@@ -157,12 +159,20 @@ const CitizenDashboard = () => {
               {tickets.length === 0 ? (
                 <p className="text-center text-slate-500 py-8">No tienes boletos aún</p>
               ) : tickets.slice(0, 6).map(t => (
-                <div key={t.id} className="px-4 py-3 flex justify-between items-center">
+                <div 
+                  key={t.id} 
+                  onClick={() => setSelectedTicket(t)}
+                  className="px-4 py-3 flex justify-between items-center cursor-pointer hover:bg-slate-700/50 transition-colors group"
+                >
                   <div>
-                    <p className="text-sm text-white font-medium">
+                    <p className="text-sm text-white font-medium group-hover:text-indigo-400 transition-colors">
                       {(t as any).schedule?.route?.nombre || 'Ruta desconocida'}
                     </p>
-                    <p className="text-xs text-slate-500">{new Date(t.fecha_compra || '').toLocaleDateString()}</p>
+                    <p className="text-xs text-slate-500 flex gap-2 items-center mt-0.5">
+                      <span>{new Date(t.fecha_compra || '').toLocaleDateString()}</span>
+                      <span>•</span>
+                      <span className="text-indigo-400 group-hover:underline">Ver QR</span>
+                    </p>
                   </div>
                   <span className={`px-2 py-1 text-xs font-bold rounded-full ${
                     t.estado === 'activo' ? 'bg-emerald-900/50 text-emerald-400' :
@@ -183,11 +193,11 @@ const CitizenDashboard = () => {
             <span className="text-2xl">🗺️</span>
             <p className="text-sm text-slate-300 mt-2">Ver Rutas</p>
           </button>
-          <button onClick={() => navigate('/admin/tickets')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-4 text-center transition">
+          <button onClick={() => navigate('/citizen/purchase')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-4 text-center transition">
             <span className="text-2xl">🎟️</span>
             <p className="text-sm text-slate-300 mt-2">Comprar Boleto</p>
           </button>
-          <button onClick={() => navigate('/admin/wallet')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-4 text-center transition">
+          <button onClick={() => navigate('/citizen/wallet')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-4 text-center transition">
             <span className="text-2xl">💳</span>
             <p className="text-sm text-slate-300 mt-2">Recargar</p>
           </button>
@@ -197,6 +207,98 @@ const CitizenDashboard = () => {
           </button>
         </div>
       </div>
+
+      {/* Modal de Boleto Digital */}
+      {selectedTicket && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
+          <div className="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl relative flex flex-col items-center">
+            {/* Cabecera del ticket */}
+            <div className="bg-indigo-600 w-full px-6 py-5 text-center relative">
+              <div className="absolute top-4 right-4">
+                <button 
+                  onClick={() => setSelectedTicket(null)} 
+                  className="text-indigo-200 hover:text-white font-bold text-lg bg-black/20 hover:bg-black/30 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              <span className="text-xs uppercase tracking-widest text-indigo-200 font-bold">Pase de Abordaje</span>
+              <h3 className="text-xl font-bold text-white mt-1">
+                {(selectedTicket as any).schedule?.route?.nombre || 'Ruta de Transporte'}
+              </h3>
+            </div>
+
+            {/* Cuerpo del ticket (Información del viaje) */}
+            <div className="w-full p-6 text-slate-300 space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-slate-400 text-xs uppercase block">Pasajero</span>
+                  <span className="font-semibold text-white">{citizen?.nombres} {citizen?.apellidos}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-xs uppercase block">Precio Pagado</span>
+                  <span className="font-semibold text-emerald-400">${Number(selectedTicket.precio_pagado).toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-slate-400 text-xs uppercase block">Fecha de Compra</span>
+                  <span className="font-semibold text-white">
+                    {new Date(selectedTicket.fecha_compra || '').toLocaleDateString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-xs uppercase block">Hora de Salida</span>
+                  <span className="font-semibold text-white">
+                    {(selectedTicket as any).schedule?.hora_salida || 'Próximo'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-slate-400 text-xs uppercase block">Estado</span>
+                  <span className={`inline-block font-semibold px-2 py-0.5 rounded text-xs uppercase ${
+                    selectedTicket.estado === 'activo' ? 'bg-emerald-900/50 text-emerald-400' :
+                    selectedTicket.estado === 'usado' ? 'bg-blue-900/50 text-blue-400' : 'bg-red-900/50 text-red-400'
+                  }`}>
+                    {selectedTicket.estado}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-xs uppercase block">Fecha Viaje</span>
+                  <span className="font-semibold text-white">
+                    {(selectedTicket as any).schedule?.fecha || 'Programada'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Separador de ticket con estilo clásico */}
+            <div className="w-full flex items-center justify-between px-1 relative">
+              <div className="w-4 h-8 bg-slate-950 rounded-r-full -ml-3 border border-slate-700 border-l-0"></div>
+              <div className="border-t-2 border-dashed border-slate-600 w-full mx-2"></div>
+              <div className="w-4 h-8 bg-slate-950 rounded-l-full -mr-3 border border-slate-700 border-r-0"></div>
+            </div>
+
+            {/* Parte inferior: Código QR y Hash */}
+            <div className="p-6 flex flex-col items-center w-full">
+              <div className="bg-white p-3 rounded-2xl shadow-inner mb-4">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${selectedTicket.codigo_qr}&color=1e1b4b`} 
+                  alt="Código QR del boleto"
+                  className="w-44 h-44 object-contain"
+                />
+              </div>
+              <span className="text-slate-400 text-xs uppercase block mb-1">Código de validación</span>
+              <span className="font-mono text-white font-bold text-base tracking-wider bg-slate-900 px-4 py-1.5 rounded-lg border border-slate-700/80">
+                {selectedTicket.codigo_qr}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
