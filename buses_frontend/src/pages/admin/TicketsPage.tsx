@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getTickets, purchaseTicket, deleteTicket } from '../../services/ticketsService';
-import { getCitizens } from '../../services/citizensService';
+import { getCitizens, createCitizen } from '../../services/citizensService';
 import { getSchedules } from '../../services/schedulesService';
+import { getUsers } from '../../services/userService';
+import { rechargeWallet } from '../../services/walletService';
 import type { Ticket } from '../../types/ticket.types';
 import type { Citizen } from '../../types/citizen.types';
 import type { Schedule } from '../../types/schedule.types';
+import type { User } from '../../types/user.types';
 import Button from '../../components/common/Button';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,6 +17,7 @@ const TicketsPage = () => {
   const navigate = useNavigate();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [citizens, setCitizens] = useState<Citizen[]>([]);
+  const [securityUsers, setSecurityUsers] = useState<User[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [filter, setFilter] = useState<FilterState>('todos');
   
@@ -24,10 +28,17 @@ const TicketsPage = () => {
 
   const fetchData = async () => {
     try {
-      const [tData, cData, sData] = await Promise.all([getTickets(), getCitizens(), getSchedules()]);
+      const [tData, cData, sData, uData] = await Promise.all([
+        getTickets(),
+        getCitizens(),
+        getSchedules(),
+        getUsers().catch(() => [])
+      ]);
       setTickets(tData);
       setCitizens(cData);
       setSchedules(sData);
+      const ciudadanos = uData.filter(u => u.roles?.some(r => r.name.toUpperCase() === 'CIUDADANO'));
+      setSecurityUsers(ciudadanos);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -40,12 +51,39 @@ const TicketsPage = () => {
     setErrorMsg('');
     setSuccessMsg('');
     try {
-      await purchaseTicket(formData.citizenId, formData.scheduleId);
+      let targetCitizenId = formData.citizenId;
+
+      // Si el id seleccionado empieza con "user-", es una cuenta de seguridad sin perfil creado
+      if (targetCitizenId.startsWith('user-')) {
+        const userId = targetCitizenId.replace('user-', '');
+        const secUser = securityUsers.find(u => u.id === userId);
+        if (!secUser) throw new Error('Usuario de seguridad no encontrado');
+
+        // Auto-crear el ciudadano en ms-logic
+        const names = secUser.name ? secUser.name.split(' ') : ['Ciudadano'];
+        const nombres = names[0];
+        const apellidos = names.slice(1).join(' ') || 'Registrado';
+
+        const newCitizen = await createCitizen({
+          userId: secUser.id,
+          nombres,
+          apellidos,
+          telefono: '',
+          direccion: 'Sin dirección registrada',
+          fecha_nacimiento: new Date().toISOString().split('T')[0]
+        });
+
+        // Aprovisionar saldo de simulación para que la compra no rebote
+        await rechargeWallet(newCitizen.id, 20000, `SIM-${Math.floor(Math.random() * 1000000)}`);
+        targetCitizenId = newCitizen.id;
+      }
+
+      await purchaseTicket(targetCitizenId, formData.scheduleId);
       setSuccessMsg('¡Boleto comprado con éxito! Se descontó el saldo.');
       setTimeout(() => { setIsSimulating(false); setSuccessMsg(''); }, 2000);
       fetchData();
     } catch (error: any) {
-      setErrorMsg(error.response?.data?.message || 'Error desconocido al comprar boleto');
+      setErrorMsg(error.response?.data?.message || error.message || 'Error desconocido al comprar boleto');
     }
   };
 
@@ -106,6 +144,9 @@ const TicketsPage = () => {
                  {citizens.map(c => (
                    <option key={c.id} value={c.id}>{c.nombres} {c.apellidos} (Saldo: ${Number(c.saldo).toFixed(2)})</option>
                  ))}
+                  {securityUsers.filter(u => !citizens.some(c => c.userId === u.id)).map(u => (
+                    <option key={`user-${u.id}`} value={`user-${u.id}`}>⚠️ {u.name} ({u.email}) - Sin Perfil (Se auto-creará con $20k)</option>
+                  ))}
                </select>
             </div>
             <div>

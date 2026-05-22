@@ -8,6 +8,7 @@ import { useAuthStore } from '../../store'
 import * as authService from '../../services/authService'
 import Input from '../../components/common/Input'
 import Button from '../../components/common/Button'
+import { createCitizen } from '../../services/citizensService'
 
 const completeProfileSchema = z.object({
   address: z.string().min(5, 'La dirección debe tener al menos 5 caracteres'),
@@ -51,6 +52,24 @@ const CompleteProfilePage = () => {
       if (result.error) {
         setError(result.error)
       } else {
+        // Create the corresponding Citizen record in ms-logic (business microservice)
+        try {
+          const names = user.name ? user.name.split(' ') : ['Ciudadano'];
+          const nombres = names[0];
+          const apellidos = names.slice(1).join(' ') || 'Registrado';
+          
+          await createCitizen({
+            userId: user.id,
+            nombres: nombres,
+            apellidos: apellidos,
+            telefono: data.phone || '',
+            direccion: data.address,
+            fecha_nacimiento: new Date().toISOString().split('T')[0]
+          });
+        } catch (err) {
+          console.error('Error creating citizen in logic microservice:', err);
+        }
+
         // Update user in store to reflect profile completion
         setUser({ ...user, profileComplete: true })
         navigate('/dashboard', { replace: true })

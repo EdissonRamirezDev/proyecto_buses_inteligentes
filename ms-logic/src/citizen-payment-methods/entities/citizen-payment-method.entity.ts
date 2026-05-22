@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Citizen } from './citizen.entity';
-import { PaymentMethod } from './payment-method.entity';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Citizen } from '../../citizens/entities/citizen.entity';
+import { PaymentMethod } from '../../payment-methods/entities/payment-method.entity';
+import { Ticket } from '../../tickets/entities/ticket.entity';
 
 @Entity('citizen_payment_methods')
 export class CitizenPaymentMethod {
@@ -20,4 +21,7 @@ export class CitizenPaymentMethod {
 
   @Column({ default: true })
   is_active: boolean;
+
+  @OneToMany(() => Ticket, (ticket) => ticket.citizenPaymentMethod)
+  tickets: Ticket[];
 }

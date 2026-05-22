@@ -1,5 +1,5 @@
+import { useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
-
 import { useNavigate } from 'react-router-dom'
 import Button from '../../components/common/Button'
 
@@ -15,6 +15,16 @@ const DashboardPage = () => {
   const isAdmin = roles.includes('ADMIN_SISTEMA') || roles.includes('ADMIN')
   const isConductor = roles.includes('CONDUCTOR')
   const isCitizen = roles.includes('CIUDADANO')
+
+  useEffect(() => {
+    if (user) {
+      if (isCitizen && !isAdmin) {
+        navigate('/citizen/dashboard', { replace: true })
+      } else if (isConductor && !isAdmin) {
+        navigate('/conductor/turno', { replace: true })
+      }
+    }
+  }, [user, isCitizen, isConductor, isAdmin, navigate])
 
   const toggleDarkMode = () => {
     document.documentElement.classList.toggle('dark')

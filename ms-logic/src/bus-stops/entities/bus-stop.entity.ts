@@ -18,8 +18,6 @@ export class BusStop {
   @Column({ type: 'decimal', precision: 11, scale: 8 })
   longitud: number;
 
-  @Column({ default: 'regular' })
-  tipo: string;
 
   @Column({ default: 'N/A' })
   sentido: string;

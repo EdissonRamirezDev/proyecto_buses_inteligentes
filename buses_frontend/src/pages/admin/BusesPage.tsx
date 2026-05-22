@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import * as busService from '../../services/busService';
 import type { Bus } from '../../types/bus.types';
 import BusList from '../../components/admin/BusList';

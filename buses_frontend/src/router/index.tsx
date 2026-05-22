@@ -36,6 +36,8 @@ import CompaniesPage from '../pages/admin/CompaniesPage'
 // Pages - Citizen
 import CitizenDashboard from '../pages/citizen/CitizenDashboard'
 import CitizenRoutes from '../pages/citizen/CitizenRoutes'
+import CitizenPurchasePage from '../pages/citizen/CitizenPurchasePage'
+import CitizenWalletPage from '../pages/citizen/CitizenWalletPage'
 
 // Pages - Conductor
 import ConductorShift from '../pages/conductor/ConductorShift'
@@ -87,6 +89,8 @@ const AppRouter = () => {
         {/* Rutas de Rol Específico */}
         <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
         <Route path="/citizen/routes" element={<CitizenRoutes />} />
+        <Route path="/citizen/purchase" element={<CitizenPurchasePage />} />
+        <Route path="/citizen/wallet" element={<CitizenWalletPage />} />
         <Route path="/conductor/turno" element={<ConductorShift />} />
       </Route>
 

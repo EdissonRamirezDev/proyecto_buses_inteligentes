@@ -21,6 +21,9 @@ import { MessagesModule } from './messages/messages.module';
 import { ReportsModule } from './reports/reports.module';
 import { PersonsModule } from './persons/persons.module';
 import { BusinessAdministratorModule } from './business_administrator/business_administrator.module';
+import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
+import { CitizenPaymentMethodsModule } from './citizen-payment-methods/citizen-payment-methods.module';
+import { AddressesModule } from './addresses/addresses.module';
 
 @Module({
   imports: [
@@ -59,6 +62,9 @@ import { BusinessAdministratorModule } from './business_administrator/business_a
     ReportsModule,
     PersonsModule,
     BusinessAdministratorModule,
+    PaymentMethodsModule,
+    CitizenPaymentMethodsModule,
+    AddressesModule,
   ],
 })
 export class AppModule {}

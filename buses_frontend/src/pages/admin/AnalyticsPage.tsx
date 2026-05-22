@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Button from '../../components/common/Button';
 import { getAgeDistribution, getRevenueByMethod } from '../../services/reportsService';
 import { getBuses } from '../../services/busService';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const AnalyticsPage = () => {
+  const navigate = useNavigate();
   const [ageData, setAgeData] = useState<any[]>([]);
   const [revenueData, setRevenueData] = useState<any[]>([]);
   const [buses, setBuses] = useState<any[]>([]);
@@ -31,7 +34,12 @@ const AnalyticsPage = () => {
 
   return (
     <div className="p-6 bg-slate-900 min-h-screen text-slate-100">
-      <h1 className="text-3xl font-bold text-white mb-8">Dashboard de Analítica e Inteligencia</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold text-white">Dashboard de Analítica e Inteligencia</h1>
+        <Button onClick={() => navigate('/dashboard')} className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700">
+          ← Volver
+        </Button>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Gráfico 1: Rango Etario (Pie) */}
@@ -48,7 +56,7 @@ const AnalyticsPage = () => {
                   outerRadius={100}
                   paddingAngle={5}
                   dataKey="value"
-                  label={(props: any) => `${props.name} ${(props.percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                 >
                   {ageData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -71,7 +79,7 @@ const AnalyticsPage = () => {
                 <XAxis dataKey="method" stroke="#94a3b8" />
                 <YAxis stroke="#94a3b8" />
                 <Tooltip 
-                  formatter={(value: any) => [`$${Number(value).toLocaleString()}`, 'Ingresos']}
+                  formatter={(value: any) => [`$${Number(value || 0).toLocaleString()}`, 'Ingresos']}
                   contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
                 />
                 <Legend />
@@ -81,6 +89,7 @@ const AnalyticsPage = () => {
           </div>
         </div>
       </div>
+
 
       {/* Monitor en Tiempo Real de Buses */}
       <div className="bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-700">
