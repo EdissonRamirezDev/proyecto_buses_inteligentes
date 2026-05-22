@@ -82,10 +82,10 @@ export class ShiftsService {
   async findActiveByDriverEmail(email: string): Promise<Shift> {
     const shift = await this.shiftRepository.findOne({
       where: {
-        driver: { email },
+        driver: { person: { email } },
         estado: 'ACTIVO'
       },
-      relations: ['bus', 'driver'],
+      relations: ['bus', 'driver', 'driver.person'],
       order: { fecha_inicio: 'DESC' }
     });
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { getAgeDistribution, getRevenueByMethod } from '../../services/reportsService';
 import { getBuses } from '../../services/busService';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -48,7 +48,7 @@ const AnalyticsPage = () => {
                   outerRadius={100}
                   paddingAngle={5}
                   dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={(props: any) => `${props.name} ${(props.percent * 100).toFixed(0)}%`}
                 >
                   {ageData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -71,7 +71,7 @@ const AnalyticsPage = () => {
                 <XAxis dataKey="method" stroke="#94a3b8" />
                 <YAxis stroke="#94a3b8" />
                 <Tooltip 
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, 'Ingresos']}
+                  formatter={(value: any) => [`$${Number(value).toLocaleString()}`, 'Ingresos']}
                   contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
                 />
                 <Legend />

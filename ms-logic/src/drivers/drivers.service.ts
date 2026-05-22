@@ -23,7 +23,10 @@ export class DriversService {
   }
 
   async findOne(id: number) {
-    const driver = await this.driverRepository.findOne({ where: { id } });
+    const driver = await this.driverRepository.findOne({ 
+      where: { id },
+      relations: ['person', 'shifts', 'shifts.bus', 'companyDrivers', 'companyDrivers.company'] 
+    });
     if (!driver) throw new NotFoundException(`Conductor #${id} no encontrado`);
     return driver;
   }

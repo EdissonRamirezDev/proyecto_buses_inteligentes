@@ -1,25 +1,23 @@
-import { IsString, IsNotEmpty, IsEnum, IsOptional, IsArray } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateIncidentDto {
-  @IsString()
-  @IsNotEmpty()
-  titulo: string;
+    @IsNotEmpty()
+    @IsString()
+    type: string;
 
-  @IsString()
-  @IsNotEmpty()
-  descripcion: string;
+    @IsNotEmpty()
+    @IsString()
+    severity: string;
 
-  @IsEnum(['MECANICO', 'ACCIDENTE', 'CONGESTION', 'PASAJERO', 'OTRO'])
-  categoria: string;
+    @IsNotEmpty()
+    @IsString()
+    description: string;
 
-  @IsString()
-  @IsNotEmpty()
-  shiftId: string; // El turno activo del conductor
+    @IsNotEmpty()
+    @IsString()
+    date: string;
 
-  @IsOptional()
-  @IsArray()
-  photos?: string[]; // URLs de fotos
-
-  @IsOptional()
-  busId?: string; // Por si se quiere asociar un bus adicional
+    @IsNotEmpty()
+    @IsString()
+    state: string;
 }

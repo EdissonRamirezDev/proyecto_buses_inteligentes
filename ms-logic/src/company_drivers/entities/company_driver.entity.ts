@@ -1,6 +1,6 @@
 import { Company } from "../../companies/entities/company.entity";
 import { Driver } from "../../drivers/entities/driver.entity";
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
 export enum CompanyDriverStatus {
     ACTIVE = 'ACTIVE',
@@ -12,8 +12,11 @@ export class CompanyDriver {
     @PrimaryGeneratedColumn()
     id?: number;
 
-    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-    assignedAt?: Date;
+    @Column({ type: 'date', nullable: true })
+    hireDate?: Date | null;
+
+    @Column({ type: 'date', nullable: true })
+    fireDate?: Date | null;
 
     @Column({
         type: 'enum',
@@ -22,12 +25,9 @@ export class CompanyDriver {
     })
     status?: CompanyDriverStatus;
 
-    // Many to One relationships
     @ManyToOne(() => Company, (company) => company.companyDrivers)
-    // @JoinColumn({ name: 'company_id' })
     company?: Company;
 
     @ManyToOne(() => Driver, (driver) => driver.companyDrivers)
-    // @JoinColumn({ name: 'driver_id' })
     driver?: Driver;
 }

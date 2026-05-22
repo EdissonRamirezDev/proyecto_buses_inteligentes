@@ -18,7 +18,7 @@ export class BusesIncident {
     reportDate?: String;
 
     // Relación con Bus
-    @ManyToOne(() => Bus, (bus) => bus.busIncidents, { onDelete: 'CASCADE' })
+    @ManyToOne(() => Bus, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'bus_id' })
     bus?: Bus;
 

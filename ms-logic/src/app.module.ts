@@ -19,6 +19,8 @@ import { TicketsModule } from './tickets/tickets.module';
 import { HistoryModule } from './history/history.module';
 import { MessagesModule } from './messages/messages.module';
 import { ReportsModule } from './reports/reports.module';
+import { PersonsModule } from './persons/persons.module';
+import { BusinessAdministratorModule } from './business_administrator/business_administrator.module';
 
 @Module({
   imports: [
@@ -55,6 +57,8 @@ import { ReportsModule } from './reports/reports.module';
     HistoryModule,
     MessagesModule,
     ReportsModule,
+    PersonsModule,
+    BusinessAdministratorModule,
   ],
 })
 export class AppModule {}

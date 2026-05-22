@@ -1,30 +1,26 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn } from 'typeorm';
-import { Shift } from '../../shifts/entities/shift.entity';
-import { IncidentBus } from './incident-bus.entity';
+import { BusesIncident } from "../../buses_incidents/entities/buses_incident.entity";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('incidents')
 export class Incident {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+    @PrimaryGeneratedColumn()
+    id?: number;
 
-  @Column()
-  titulo: string;
+    @Column()
+    type?: string;
 
-  @Column('text')
-  descripcion: string;
+    @Column()
+    severity?: string;
 
-  @Column({ type: 'enum', enum: ['MECANICO', 'ACCIDENTE', 'CONGESTION', 'PASAJERO', 'OTRO'] })
-  categoria: string;
+    @Column()
+    description?: string;
 
-  @Column({ type: 'enum', enum: ['REPORTADO', 'EN_REVISION', 'RESUELTO'], default: 'REPORTADO' })
-  estado: string;
+    @Column()
+    date?: string;
 
-  @CreateDateColumn()
-  fecha_reporte: Date;
+    @Column()
+    state?: string;
 
-  @ManyToOne(() => Shift, (shift) => shift.incidents, { onDelete: 'CASCADE' })
-  shift: Shift; // Para saber qué turno (y por tanto qué conductor y bus) lo reportó
-
-  @OneToMany(() => IncidentBus, (ib) => ib.incident)
-  incidentBuses: IncidentBus[];
+    @OneToMany(() => BusesIncident, (busIncident) => busIncident.incident)
+    busesIncidents?: BusesIncident[];
 }

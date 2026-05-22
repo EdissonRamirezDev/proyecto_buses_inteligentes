@@ -138,4 +138,35 @@ export class BusesIncidentsService {
     await this.busesIncidentRepository.remove(busesIncident);
     return { message: `BusesIncident #${id} eliminado correctamente` };
   }
+
+  async getIncidentActiveShiftAndDriver(id: number) {
+    const busesIncident = await this.busesIncidentRepository.findOne({ 
+      where: { id }, 
+      relations: ['bus', 'bus.shifts', 'bus.shifts.driver'] 
+    });
+
+    if (!busesIncident) throw new NotFoundException(`BusesIncident #${id} no encontrado`);
+    if (!busesIncident.bus) throw new NotFoundException('No bus associated with this incident');
+
+    const reportDate = new Date(busesIncident.reportDate as string);
+
+    const activeShift = busesIncident.bus.shifts?.find(shift => {
+      if (!shift.fecha_inicio) return false;
+      const inicio = new Date(shift.fecha_inicio);
+      const fin = shift.fecha_fin ? new Date(shift.fecha_fin) : new Date();
+      return reportDate >= inicio && reportDate <= fin;
+    });
+
+    if (!activeShift) throw new NotFoundException('No active shift found for the bus at the time of the incident');
+
+    return {
+      shift: {
+        id: activeShift.id,
+        fecha_inicio: activeShift.fecha_inicio,
+        fecha_fin: activeShift.fecha_fin,
+        estado: activeShift.estado,
+      },
+      driver: activeShift.driver,
+    };
+  }
 }

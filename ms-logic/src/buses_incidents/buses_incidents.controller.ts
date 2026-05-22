@@ -31,4 +31,9 @@ export class BusesIncidentsController {
   remove(@Param('id') id: string) {
     return this.busesIncidentsService.remove(+id);
   }
+
+  @Get(':id/active-shift')
+  getActiveShiftAndDriver(@Param('id') id: string) {
+    return this.busesIncidentsService.getIncidentActiveShiftAndDriver(+id);
+  }
 }

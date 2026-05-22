@@ -1,26 +1,19 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, OneToMany, OneToOne, JoinColumn, PrimaryGeneratedColumn } from "typeorm";
 import { Shift } from "../../shifts/entities/shift.entity";
 import { CompanyDriver } from "../../company_drivers/entities/company_driver.entity";
+import { Person } from "../../persons/entities/person.entity";
 
 @Entity('drivers')
 export class Driver {
     @PrimaryGeneratedColumn()
     id?: number;
 
-    @Column()
-    name?: string;
-
-    @Column()
-    last_name?: string;
+    @OneToOne(() => Person, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'person_id' })
+    person?: Person;
 
     @Column()
     license?: string;
-
-    @Column()
-    phone?: string;
-
-    @Column()
-    email?: string;
 
     @Column()
     status?: string;
@@ -29,6 +22,6 @@ export class Driver {
     @OneToMany(() => Shift, (shift) => shift.driver)
     shifts?: Shift[];
 
-    @OneToMany(() => CompanyDriver, (companyDriver) => companyDriver.company)
+    @OneToMany(() => CompanyDriver, (companyDriver) => companyDriver.driver)
     companyDrivers?: CompanyDriver[];
 }

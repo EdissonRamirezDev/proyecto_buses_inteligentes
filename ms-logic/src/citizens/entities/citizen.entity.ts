@@ -1,24 +1,17 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, OneToOne, JoinColumn } from 'typeorm';
 import { Ticket } from '../../tickets/entities/ticket.entity';
 import { WalletTransaction } from './wallet-transaction.entity';
 import { CitizenPaymentMethod } from './citizen-payment-method.entity';
+import { Person } from '../../persons/entities/person.entity';
 
 @Entity('citizens')
 export class Citizen {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ nullable: true })
-  userId: string; // Enlace con ms-security
-
-  @Column()
-  nombres: string;
-
-  @Column()
-  apellidos: string;
-
-  @Column({ nullable: true })
-  telefono: string;
+  @OneToOne(() => Person, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'person_id' })
+  person: Person;
 
   @Column({ nullable: true })
   direccion: string;
