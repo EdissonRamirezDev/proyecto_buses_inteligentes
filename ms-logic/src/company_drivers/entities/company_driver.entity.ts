@@ -12,11 +12,8 @@ export class CompanyDriver {
     @PrimaryGeneratedColumn()
     id?: number;
 
-    @Column({ type: 'date', nullable: true })
-    hireDate?: Date | null;
-
-    @Column({ type: 'date', nullable: true })
-    fireDate?: Date | null;
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+    assignedAt?: Date;
 
     @Column({
         type: 'enum',
