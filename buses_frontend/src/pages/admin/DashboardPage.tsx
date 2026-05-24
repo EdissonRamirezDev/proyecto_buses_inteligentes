@@ -11,8 +11,8 @@ import Button from '../../components/common/Button'
 const DashboardPage = () => {
   const { user, handleLogout } = useAuth()
   const navigate = useNavigate()
-  const roles = user?.roles?.map(r => r.name.toUpperCase()) || []
-  const isAdmin = roles.includes('ADMIN_SISTEMA') || roles.includes('ADMIN')
+  const roles = user?.roles?.map(r => r.name.toUpperCase().replace(/\s+/g, '_')) || []
+  const isAdmin = roles.includes('ADMIN_SISTEMA') || roles.includes('ADMIN') || roles.includes('ADMINISTRADOR_SISTEMA')
   const isConductor = roles.includes('CONDUCTOR')
   const isCitizen = roles.includes('CIUDADANO')
   const isCompanyAdmin = roles.includes('ADMIN_EMPRESA') || roles.includes('ADMINISTRADOR_EMPRESA')
