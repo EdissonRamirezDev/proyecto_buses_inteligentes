@@ -4,4 +4,11 @@ export interface Bus {
   modelo?: string;
   capacidad?: number;
   estado?: string;
+  companyId?: number;
+  company?: {
+    id: number;
+    name: string;
+    nit?: string;
+  };
 }
+

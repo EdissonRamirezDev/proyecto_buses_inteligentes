@@ -52,7 +52,7 @@ const CompanyAdminDashboard = () => {
   const [busCapacidad, setBusCapacidad] = useState<number>(30);
   const [busStandingCap, setBusStandingCap] = useState<number>(15);
   const [busYear, setBusYear] = useState<number>(new Date().getFullYear());
-  const [busInitialStatus, setBusInitialStatus] = useState<string>('Operativo');
+  const [busInitialStatus, setBusInitialStatus] = useState<string>('available');
   const [isBusSubmitting, setIsBusSubmitting] = useState(false);
   
   // Create Schedule Form States
@@ -178,12 +178,12 @@ const CompanyAdminDashboard = () => {
         modelo: busModelo,
         capacidad: Number(busCapacidad) + Number(busStandingCap), // Total capacity
         estado: busInitialStatus,
-        company: { id: companyId, name: companyName, nit: '' }
+        companyId: companyId
       });
       showToast('Bus registrado con éxito. QR Generado.');
       setIsBusModalOpen(false);
       // Reset form
-      setBusPlaca(''); setBusModelo(''); setBusCapacidad(30); setBusStandingCap(15); setBusYear(new Date().getFullYear()); setBusInitialStatus('Operativo');
+      setBusPlaca(''); setBusModelo(''); setBusCapacidad(30); setBusStandingCap(15); setBusYear(new Date().getFullYear()); setBusInitialStatus('available');
       await loadCoreData();
     } catch (err) {
       console.error(err);
@@ -773,11 +773,11 @@ const CompanyAdminDashboard = () => {
                       <div>
                         <div className="flex justify-between items-center mb-3">
                           <p className="font-mono text-base font-bold text-white tracking-wider">{bus.placa}</p>
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono ${
-                            bus.estado?.toLowerCase().includes('operativo') ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/25' :
-                            bus.estado?.toLowerCase().includes('mantenimiento') ? 'bg-amber-950 text-amber-400 border border-amber-500/25' : 'bg-rose-950 text-rose-400 border border-rose-500/25'
+                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono ${
+                            bus.estado?.toLowerCase().includes('available') || bus.estado?.toLowerCase().includes('operativo') ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/25' :
+                            bus.estado?.toLowerCase().includes('maintenance') || bus.estado?.toLowerCase().includes('mantenimiento') ? 'bg-amber-950 text-amber-400 border border-amber-500/25' : 'bg-rose-950 text-rose-400 border border-rose-500/25'
                           }`}>
-                            {bus.estado?.split(':')[0]}
+                            {bus.estado === 'available' ? 'Operativo' : bus.estado === 'maintenance' ? 'Mantenimiento' : bus.estado === 'out of service' ? 'Fuera de Servicio' : bus.estado}
                           </span>
                         </div>
                         <p className="text-xs text-slate-400">{bus.modelo || 'Mercedes-Benz Volksbus'}</p>
@@ -1321,9 +1321,9 @@ const CompanyAdminDashboard = () => {
                   onChange={(e) => setBusInitialStatus(e.target.value)}
                   className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-300 font-medium"
                 >
-                  <option value="Operativo">Operativo (Habilitado)</option>
-                  <option value="Mantenimiento">Mantenimiento Preventivo</option>
-                  <option value="Fuera de Servicio">Fuera de Servicio</option>
+                  <option value="available">Operativo (Habilitado)</option>
+                  <option value="maintenance">Mantenimiento Preventivo</option>
+                  <option value="out of service">Fuera de Servicio</option>
                 </select>
               </div>
 
@@ -1394,7 +1394,9 @@ const CompanyAdminDashboard = () => {
                   >
                     <option value="">Selecciona...</option>
                     {buses.map((b) => (
-                      <option key={b.id} value={b.id}>{b.placa} ({b.estado?.split(':')[0]})</option>
+                      <option key={b.id} value={b.id}>
+                        {b.placa} ({b.estado === 'available' ? 'Operativo' : b.estado === 'maintenance' ? 'Mantenimiento' : b.estado === 'out of service' ? 'Fuera de Servicio' : b.estado})
+                      </option>
                     ))}
                   </select>
                 </div>
