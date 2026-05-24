@@ -15,6 +15,7 @@ const DashboardPage = () => {
   const isAdmin = roles.includes('ADMIN_SISTEMA') || roles.includes('ADMIN')
   const isConductor = roles.includes('CONDUCTOR')
   const isCitizen = roles.includes('CIUDADANO')
+  const isCompanyAdmin = roles.includes('ADMIN_EMPRESA') || roles.includes('ADMINISTRADOR_EMPRESA')
 
   useEffect(() => {
     if (user) {
@@ -22,9 +23,11 @@ const DashboardPage = () => {
         navigate('/citizen/dashboard', { replace: true })
       } else if (isConductor && !isAdmin) {
         navigate('/conductor/turno', { replace: true })
+      } else if (isCompanyAdmin && !isAdmin) {
+        navigate('/company-admin/dashboard', { replace: true })
       }
     }
-  }, [user, isCitizen, isConductor, isAdmin, navigate])
+  }, [user, isCitizen, isConductor, isCompanyAdmin, isAdmin, navigate])
 
   const toggleDarkMode = () => {
     document.documentElement.classList.toggle('dark')

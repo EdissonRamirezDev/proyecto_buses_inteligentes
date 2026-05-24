@@ -42,6 +42,9 @@ import CitizenWalletPage from '../pages/citizen/CitizenWalletPage'
 // Pages - Conductor
 import ConductorShift from '../pages/conductor/ConductorShift'
 
+// Pages - Company Admin
+import CompanyAdminDashboard from '../pages/company-admin/CompanyAdminDashboard'
+
 // Pages - Errors
 import NotFoundPage from '../pages/errors/NotFoundPage'
 import ForbiddenPage from '../pages/errors/ForbiddenPage'
@@ -92,6 +95,7 @@ const AppRouter = () => {
         <Route path="/citizen/purchase" element={<CitizenPurchasePage />} />
         <Route path="/citizen/wallet" element={<CitizenWalletPage />} />
         <Route path="/conductor/turno" element={<ConductorShift />} />
+        <Route path="/company-admin/dashboard" element={<CompanyAdminDashboard />} />
       </Route>
 
       {/* ── Rutas de error ── */}
