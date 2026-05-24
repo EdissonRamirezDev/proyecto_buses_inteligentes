@@ -1,33 +1,32 @@
-import { IsNotEmpty, IsOptional, IsString, ValidateNested } from "class-validator";
-import { Bus } from "src/buses/entities/bus.entity";
-import { Shift } from "src/shifts/entities/shift.entity";
+import { IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class CreateDriverDto {
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     name?: string;
 
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     last_name?: string;
 
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     license?: string;
 
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     phone?: string;
 
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     email?: string;
 
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     status?: string;
 
     @IsOptional()
     @IsString()
     personId?: string;
 }
+
