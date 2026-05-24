@@ -82,11 +82,12 @@ const CompanyAdminDashboard = () => {
       const adminDetails = await getBusinessAdminByUserId(user.id);
       console.log('loadCoreData: getBusinessAdminByUserId response:', adminDetails);
       
-      if (adminDetails && adminDetails.companyId) {
-        setCompanyId(adminDetails.companyId);
+      const companyIdResolved = adminDetails?.companyId || adminDetails?.company?.id;
+      if (adminDetails && companyIdResolved) {
+        setCompanyId(companyIdResolved);
         setCompanyName(adminDetails.company?.name || 'Mi Empresa');
         
-        const companyIdFilter = adminDetails.companyId;
+        const companyIdFilter = companyIdResolved;
 
         // 2. Fetch all lists concurrently
         const [allBuses, allCompanyDrivers, allSystemDrivers, allIncidents, allSchedules, allRoutes, allShifts] = await Promise.all([
