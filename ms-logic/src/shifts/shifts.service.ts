@@ -49,14 +49,14 @@ export class ShiftsService {
 
   async findAll() {
     return await this.shiftRepository.find({
-      relations: ['bus', 'driver']
+      relations: ['bus', 'driver', 'driver.person']
     });
   }
 
   async findOne(id: number) {
     const shift = await this.shiftRepository.findOne({
       where: {id},
-      relations: ['bus', 'driver']
+      relations: ['bus', 'driver', 'driver.person']
     });
 
     if (!shift) throw new NotFoundException(`Turno #${id} no encontrado`);
