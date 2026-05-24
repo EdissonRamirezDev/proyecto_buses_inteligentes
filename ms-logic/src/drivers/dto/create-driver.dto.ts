@@ -26,4 +26,8 @@ export class CreateDriverDto {
     @IsString()
     @IsNotEmpty()
     status?: string;
+
+    @IsOptional()
+    @IsString()
+    personId?: string;
 }

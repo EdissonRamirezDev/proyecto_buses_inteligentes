@@ -3,6 +3,7 @@ import { CreateDriverDto } from './dto/create-driver.dto';
 import { UpdateDriverDto } from './dto/update-driver.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Driver } from './entities/driver.entity';
+import { Person } from 'src/persons/entities/person.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -10,16 +11,24 @@ export class DriversService {
   constructor(
     @InjectRepository(Driver)
     private readonly driverRepository: Repository<Driver>,
+    @InjectRepository(Person)
+    private readonly personRepository: Repository<Person>,
   ) {}
+  
   async create(createDriverDto: CreateDriverDto): Promise<Driver> {
-      const driver = this.driverRepository.create({
-        ...createDriverDto,
-      });
-      return this.driverRepository.save(driver);
+    let person: any = null;
+    if (createDriverDto.personId) {
+      person = await this.personRepository.findOne({ where: { id: createDriverDto.personId } });
     }
+    const driver = this.driverRepository.create({
+      ...createDriverDto,
+      person: person
+    });
+    return this.driverRepository.save(driver);
+  }
 
   async findAll() {
-    return await this.driverRepository.find();
+    return await this.driverRepository.find({ relations: ['person'] });
   }
 
   async findOne(id: number) {

@@ -872,10 +872,10 @@ const CompanyAdminDashboard = () => {
                           <div key={cd.id} className="py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
                             <div>
                               <p className="text-sm font-semibold text-white">
-                                {cd.driver?.name} {cd.driver?.last_name}
+                                {cd.driver?.person?.name} {cd.driver?.person?.lastName}
                               </p>
                               <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                                Licencia: {cd.driver?.licencia || 'A3-Federal'} · Email: {cd.driver?.email}
+                                Licencia: {cd.driver?.license || 'A3-Federal'} · Email: {cd.driver?.person?.email}
                               </p>
                             </div>
                             <div className="flex items-center gap-3">
@@ -922,8 +922,8 @@ const CompanyAdminDashboard = () => {
                       globalDrivers.map((d) => (
                         <div key={d.id} className="pt-3 first:pt-0 flex flex-col justify-between gap-2">
                           <div>
-                            <p className="text-xs font-bold text-white">{d.name} {d.last_name}</p>
-                            <p className="text-[10px] text-slate-500 font-mono truncate mt-0.5">Email: {d.email}</p>
+                            <p className="text-xs font-bold text-white">{d.person?.name} {d.person?.lastName}</p>
+                            <p className="text-[10px] text-slate-500 font-mono truncate mt-0.5">Email: {d.person?.email}</p>
                           </div>
                           <button
                             onClick={() => handleHireDriver(d.id!)}
@@ -1465,7 +1465,7 @@ const CompanyAdminDashboard = () => {
                 >
                   <option value="">Selecciona...</option>
                   {companyDrivers.map((cd) => (
-                    <option key={cd.id} value={cd.driver?.id}>{cd.driver?.name} {cd.driver?.last_name} ({cd.status === 'ACTIVE' ? 'Disponible' : 'Inactivo'})</option>
+                    <option key={cd.id} value={cd.driver?.id}>{cd.driver?.person?.name} {cd.driver?.person?.lastName} ({cd.status === 'ACTIVE' ? 'Disponible' : 'Inactivo'})</option>
                   ))}
                 </select>
               </div>

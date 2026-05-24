@@ -4,6 +4,7 @@ import * as userRoleService from '../../services/userRoleService'
 import * as personService from '../../services/personService'
 import * as companyService from '../../services/companyService'
 import * as businessAdminService from '../../services/businessAdminService'
+import * as driverService from '../../services/driverService'
 import type { User } from '../../types/user.types'
 import type { Role } from '../../types/role.types'
 import type { UserRole } from '../../types/userRole.types'
@@ -125,6 +126,32 @@ const UserRoleAssign = ({ user, onSuccess }: UserRoleAssignProps) => {
           personId: person.id,
           companyId: Number(selectedCompanyId),
         })
+      } else if (role.name === 'Conductor') {
+        // 1. Sincronizar usuario a Persona en ms-logic
+        const nameParts = user.name ? user.name.split(' ') : ['Usuario', 'Sistema']
+        const name = nameParts[0]
+        const lastName = nameParts.slice(1).join(' ') || 'Sistema'
+
+        const person = await personService.syncPerson({
+          userId: user.id,
+          name,
+          lastName,
+          email: user.email,
+        })
+
+        // 2. Asignar rol en ms-security
+        await userRoleService.addRoleToUser(user.id, role.id)
+
+        // 3. Crear Driver en ms-logic
+        await driverService.createDriver({
+          personId: person.id,
+          name: person.name,
+          last_name: person.lastName,
+          license: 'A3-Federal',
+          email: person.email || user.email || '',
+          phone: person.phone || '',
+          status: 'available'
+        })
       } else {
         // Flujo normal para otros roles
         await userRoleService.addRoleToUser(user.id, role.id)
@@ -157,6 +184,18 @@ const UserRoleAssign = ({ user, onSuccess }: UserRoleAssignProps) => {
 
       // Quitar rol en ms-security
       await userRoleService.removeRoleFromUser(userRoleId)
+
+      if (role.name === 'Conductor') {
+        try {
+          const allDrivers = await driverService.getDrivers()
+          const currentDriver = allDrivers.find(d => d.person?.userId === user.id)
+          if (currentDriver?.id) {
+            await driverService.deleteDriver(currentDriver.id)
+          }
+        } catch (err) {
+          console.warn('Failed to clean up driver record in logic database:', err)
+        }
+      }
 
       // Actualiza el mapa local y limpia la empresa asignada
       setUserRoleMap((prev) => {

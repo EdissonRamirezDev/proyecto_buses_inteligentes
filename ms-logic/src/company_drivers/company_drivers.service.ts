@@ -47,11 +47,11 @@ export class CompanyDriversService {
   }
 
   async findAll() {
-    return await this.companyDriverRepository.find({ relations: ['company', 'driver'] });
+    return await this.companyDriverRepository.find({ relations: ['company', 'driver', 'driver.person'] });
   }
 
   async findOne(id: number) {
-    const companyDriver = await this.companyDriverRepository.findOne({ where: { id }, relations: ['company', 'driver'] });
+    const companyDriver = await this.companyDriverRepository.findOne({ where: { id }, relations: ['company', 'driver', 'driver.person'] });
     if (!companyDriver) throw new NotFoundException(`CompanyDriver #${id} no encontrado`);
     return companyDriver;
   }

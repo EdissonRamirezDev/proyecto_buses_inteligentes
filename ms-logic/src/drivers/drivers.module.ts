@@ -5,9 +5,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Driver } from './entities/driver.entity';
 import { Shift } from 'src/shifts/entities/shift.entity';
 import { CompanyDriver } from 'src/company_drivers/entities/company_driver.entity';
+import { Person } from 'src/persons/entities/person.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Driver, Shift, CompanyDriver])],
+  imports: [TypeOrmModule.forFeature([Driver, Shift, CompanyDriver, Person])],
   controllers: [DriversController],
   providers: [DriversService],
   exports: [DriversService],
