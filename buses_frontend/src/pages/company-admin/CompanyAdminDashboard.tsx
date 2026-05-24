@@ -78,8 +78,10 @@ const CompanyAdminDashboard = () => {
   const loadCoreData = async () => {
     if (!user?.id) return;
     try {
-      // 1. Fetch Company Admin association to get Company ID
+      console.log('loadCoreData: Fetching admin profile for user.id:', user.id);
       const adminDetails = await getBusinessAdminByUserId(user.id);
+      console.log('loadCoreData: getBusinessAdminByUserId response:', adminDetails);
+      
       if (adminDetails && adminDetails.companyId) {
         setCompanyId(adminDetails.companyId);
         setCompanyName(adminDetails.company?.name || 'Mi Empresa');
@@ -96,6 +98,16 @@ const CompanyAdminDashboard = () => {
           getRoutes(),
           getShifts(),
         ]);
+
+        console.log('loadCoreData: Fetched all lists concurrently.', {
+          busesCount: allBuses.length,
+          companyDriversCount: allCompanyDrivers.length,
+          systemDriversCount: allSystemDrivers.length,
+          incidentsCount: allIncidents.length,
+          schedulesCount: allSchedules.length,
+          routesCount: allRoutes.length,
+          shiftsCount: allShifts.length,
+        });
 
         // Filter Buses by Company
         const filteredBuses = allBuses.filter((b) => b.company?.id === companyIdFilter);
@@ -126,6 +138,9 @@ const CompanyAdminDashboard = () => {
         // Filter Shifts
         const filteredShifts = allShifts.filter((s) => s.bus?.id !== undefined && busIds.has(s.bus.id));
         setShifts(filteredShifts);
+      } else {
+        console.warn('loadCoreData: No business admin association was found in ms-logic for user:', user);
+        showToast('Atención: No tienes una empresa asociada a tu usuario de administrador.');
       }
     } catch (error) {
       console.error('Error loading Company Admin core data:', error);
@@ -170,7 +185,20 @@ const CompanyAdminDashboard = () => {
   // ── BUS FLOTA FLOWS ──
   const handleRegisterBus = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyId) return;
+    console.log('handleRegisterBus: Click event fired. Submitting form...', {
+      placa: busPlaca,
+      modelo: busModelo,
+      capacidad: Number(busCapacidad) + Number(busStandingCap),
+      estado: busInitialStatus,
+      companyId: companyId
+    });
+    
+    if (!companyId) {
+      showToast('Error: Tu cuenta de administrador no tiene una empresa asociada asignada en el sistema. Contacta al Administrador de Sistema.');
+      console.error('handleRegisterBus: Cannot register bus. companyId is null/falsy.');
+      return;
+    }
+    
     setIsBusSubmitting(true);
     try {
       await createBus({
@@ -185,9 +213,9 @@ const CompanyAdminDashboard = () => {
       // Reset form
       setBusPlaca(''); setBusModelo(''); setBusCapacidad(30); setBusStandingCap(15); setBusYear(new Date().getFullYear()); setBusInitialStatus('available');
       await loadCoreData();
-    } catch (err) {
-      console.error(err);
-      showToast('Error al registrar el bus. Intente de nuevo.');
+    } catch (err: any) {
+      console.error('handleRegisterBus error:', err);
+      showToast(err.response?.data?.message || 'Error al registrar el bus. Intente de nuevo.');
     } finally {
       setIsBusSubmitting(false);
     }
