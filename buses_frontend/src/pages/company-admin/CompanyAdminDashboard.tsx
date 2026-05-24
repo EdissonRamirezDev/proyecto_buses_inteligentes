@@ -7,7 +7,7 @@ import { getDrivers } from '../../services/driverService';
 import { getIncidents, updateIncidentStatus } from '../../services/incidentsService';
 import { getSchedules, createSchedule, deleteSchedule } from '../../services/schedulesService';
 import { getRoutes } from '../../services/routesService';
-import { getShifts } from '../../services/shiftService';
+import { getShifts, createShift, deleteShift } from '../../services/shiftService';
 import type { Bus } from '../../types/bus.types';
 import type { CompanyDriver } from '../../services/companyDriverService';
 import type { Driver } from '../../types/driver.types';
@@ -66,6 +66,15 @@ const CompanyAdminDashboard = () => {
   const [progTipoRecurrencia, setProgTipoRecurrencia] = useState('Semanal');
   const [progTolerancia, setProgTolerancia] = useState<number>(5);
   const [isProgSubmitting, setIsProgSubmitting] = useState(false);
+  
+  // Create Shift Form States
+  const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+  const [shiftDriverId, setShiftDriverId] = useState<number | ''>('');
+  const [shiftBusId, setShiftBusId] = useState<number | ''>('');
+  const [shiftFechaInicio, setShiftFechaInicio] = useState(new Date().toISOString().split('T')[0] + 'T08:00');
+  const [shiftFechaFin, setShiftFechaFin] = useState(new Date().toISOString().split('T')[0] + 'T16:00');
+  const [shiftEstado, setShiftEstado] = useState<string>('programado');
+  const [isShiftSubmitting, setIsShiftSubmitting] = useState(false);
   
   // Filter States
   const [incFilterState, setIncFilterState] = useState<'TODOS' | 'REPORTADO' | 'EN_REVISION' | 'RESUELTO'>('TODOS');
@@ -136,8 +145,12 @@ const CompanyAdminDashboard = () => {
 
         setRoutes(allRoutes);
         
-        // Filter Shifts
-        const filteredShifts = allShifts.filter((s) => s.bus?.id !== undefined && busIds.has(s.bus.id));
+        // Filter Shifts by whether the bus belongs to the company OR the driver is hired by the company
+        const companyDriverIds = new Set(filteredCompanyDrivers.map((cd) => cd.driver?.id).filter(Boolean));
+        const filteredShifts = allShifts.filter((s) => 
+          (s.bus?.id !== undefined && busIds.has(s.bus.id)) ||
+          (s.driver?.id !== undefined && companyDriverIds.has(s.driver.id))
+        );
         setShifts(filteredShifts);
       } else {
         console.warn('loadCoreData: No business admin association was found in ms-logic for user:', user);
@@ -332,6 +345,55 @@ const CompanyAdminDashboard = () => {
     } catch (err) {
       console.error(err);
       showToast('Error al desvincular al conductor.');
+    }
+  };
+
+  // ── SHIFTS FLOWS ──
+  const handleCreateShift = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shiftDriverId || !shiftBusId) {
+      showToast('⚠️ Por favor selecciona un conductor y un vehículo.');
+      return;
+    }
+
+    setIsShiftSubmitting(true);
+    try {
+      await createShift({
+        fecha_inicio: new Date(shiftFechaInicio).toISOString(),
+        fecha_fin: new Date(shiftFechaFin).toISOString(),
+        estado: shiftEstado,
+        bus_id: Number(shiftBusId),
+        driver_id: Number(shiftDriverId)
+      });
+
+      showToast('¡Turno de trabajo creado con éxito!');
+      setIsShiftModalOpen(false);
+      
+      // Reset form fields
+      setShiftDriverId('');
+      setShiftBusId('');
+      setShiftFechaInicio(new Date().toISOString().split('T')[0] + 'T08:00');
+      setShiftFechaFin(new Date().toISOString().split('T')[0] + 'T16:00');
+      setShiftEstado('programado');
+      
+      await loadCoreData();
+    } catch (err) {
+      console.error(err);
+      showToast('Error al crear el turno de trabajo.');
+    } finally {
+      setIsShiftSubmitting(false);
+    }
+  };
+
+  const handleDeleteShift = async (id: number) => {
+    if (!confirm('¿Estás seguro de eliminar este turno de trabajo?')) return;
+    try {
+      await deleteShift(id);
+      showToast('Turno de trabajo eliminado con éxito.');
+      await loadCoreData();
+    } catch (err) {
+      console.error(err);
+      showToast('Error al eliminar el turno.');
     }
   };
 
@@ -940,6 +1002,86 @@ const CompanyAdminDashboard = () => {
                 </div>
 
               </div>
+
+              {/* ═══════ SECCIÓN DE TURNOS DE TRABAJO ═══════ */}
+              <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800/80 mt-6 shadow-sm animate-in fade-in duration-300">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4 border-b border-slate-900 pb-3">
+                  <div>
+                    <h3 className="font-bold text-xs uppercase font-mono tracking-wide text-slate-300 flex items-center gap-2">
+                      <i className="ti ti-alarm-clock text-blue-500"></i> Turnos de Trabajo Asignados ({shifts.length})
+                    </h3>
+                    <p className="text-[10px] text-slate-500 mt-1">Horarios y vehículos asignados a los conductores para el tracking GPS.</p>
+                  </div>
+                  <button
+                    onClick={() => setIsShiftModalOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 self-start sm:self-auto"
+                  >
+                    <i className="ti ti-plus"></i> Programar Turno
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-slate-900 bg-slate-900/30">
+                        <th className="text-[9px] text-slate-500 font-mono uppercase tracking-wider p-3">Conductor</th>
+                        <th className="text-[9px] text-slate-500 font-mono uppercase tracking-wider p-3">Vehículo</th>
+                        <th className="text-[9px] text-slate-500 font-mono uppercase tracking-wider p-3">Inicio</th>
+                        <th className="text-[9px] text-slate-500 font-mono uppercase tracking-wider p-3">Fin</th>
+                        <th className="text-[9px] text-slate-500 font-mono uppercase tracking-wider p-3">Estado</th>
+                        <th className="text-[9px] text-slate-500 font-mono uppercase tracking-wider p-3 text-right"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-900/50">
+                      {shifts.length > 0 ? (
+                        shifts.map((s) => (
+                          <tr key={s.id} className="hover:bg-slate-900/20">
+                            <td className="p-3 text-xs font-semibold text-white">
+                              {s.driver?.person?.name} {s.driver?.person?.lastName}
+                            </td>
+                            <td className="p-3 text-xs font-mono text-slate-300">
+                              {s.bus?.placa} <span className="text-[10px] text-slate-500">({s.bus?.modelo})</span>
+                            </td>
+                            <td className="p-3 text-xs font-mono text-slate-400">
+                              {new Date(s.fecha_inicio || '').toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
+                            </td>
+                            <td className="p-3 text-xs font-mono text-slate-400">
+                              {new Date(s.fecha_fin || '').toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
+                            </td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold font-mono uppercase ${
+                                s.estado === 'programado' ? 'bg-blue-950 text-blue-400 border border-blue-500/20' :
+                                s.estado === 'en_curso' || s.estado?.toLowerCase() === 'en_curso' ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/20' :
+                                s.estado === 'finalizado' ? 'bg-slate-900 text-slate-400 border border-slate-800' : 'bg-slate-800 text-slate-400'
+                              }`}>
+                                {s.estado}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">
+                              <button
+                                onClick={() => handleDeleteShift(s.id!)}
+                                className="p-1 text-slate-500 hover:text-red-400 transition"
+                                title="Eliminar Turno"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="text-center py-6 text-slate-500 text-xs">
+                            No hay turnos programados en este momento.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -1525,6 +1667,121 @@ const CompanyAdminDashboard = () => {
                 disabled={isProgSubmitting}
               >
                 {isProgSubmitting ? 'Registrando...' : 'Programar'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ═══════ MODAL: NUEVO TURNO ═══════ */}
+      {isShiftModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <form
+            onSubmit={handleCreateShift}
+            className="bg-slate-900 border border-slate-800/90 rounded-3xl w-full max-w-lg p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200"
+          >
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h2 className="text-md font-bold text-white tracking-tight flex items-center gap-2">
+                <i className="ti ti-alarm-clock text-blue-500"></i> Programar Turno de Trabajo
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsShiftModalOpen(false)}
+                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 transition"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Conductor</label>
+                <select
+                  required
+                  value={shiftDriverId}
+                  onChange={(e) => setShiftDriverId(Number(e.target.value))}
+                  className="w-full p-3 bg-slate-955 border border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-300 font-medium"
+                >
+                  <option value="">Selecciona Conductor...</option>
+                  {companyDrivers.filter(cd => cd.status === 'ACTIVE').map((cd) => (
+                    <option key={cd.id} value={cd.driver?.id}>
+                      {cd.driver?.person?.name} {cd.driver?.person?.lastName}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-500 mt-1">Solo conductores con estado "Disponible".</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Vehículo (Bus)</label>
+                <select
+                  required
+                  value={shiftBusId}
+                  onChange={(e) => setShiftBusId(Number(e.target.value))}
+                  className="w-full p-3 bg-slate-955 border border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-300 font-medium"
+                >
+                  <option value="">Selecciona Bus...</option>
+                  {buses.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.placa} ({b.modelo})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Fecha y Hora Inicio</label>
+                  <input
+                    required
+                    type="datetime-local"
+                    value={shiftFechaInicio}
+                    onChange={(e) => setShiftFechaInicio(e.target.value)}
+                    className="w-full p-3 bg-slate-955 border border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Fecha y Hora Fin</label>
+                  <input
+                    required
+                    type="datetime-local"
+                    value={shiftFechaFin}
+                    onChange={(e) => setShiftFechaFin(e.target.value)}
+                    className="w-full p-3 bg-slate-955 border border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Estado Inicial</label>
+                <select
+                  value={shiftEstado}
+                  onChange={(e) => setShiftEstado(e.target.value)}
+                  className="w-full p-3 bg-slate-955 border border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-300"
+                >
+                  <option value="programado">Programado</option>
+                  <option value="en_curso">En Curso</option>
+                  <option value="finalizado">Finalizado</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setIsShiftModalOpen(false)}
+                className="flex-1 p-3 border border-slate-800 hover:bg-slate-800 text-slate-400 font-bold rounded-xl text-sm transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="flex-[2] bg-blue-600 hover:bg-blue-500 text-white font-bold p-3 rounded-xl text-sm transition flex items-center justify-center gap-2"
+                disabled={isShiftSubmitting}
+              >
+                {isShiftSubmitting ? 'Registrando...' : 'Programar Turno'}
               </button>
             </div>
           </form>
