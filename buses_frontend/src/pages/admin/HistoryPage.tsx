@@ -40,12 +40,19 @@ const HistoryPage = () => {
     setSuccessMsg('');
     
     try {
-      await scanTicket(formData.ticketId, formData.nodeId, formData.tipo_validacion);
-      setSuccessMsg(`¡Validación exitosa! El boleto ha sido marcado como ${formData.tipo_validacion === 'ENTRADA' ? 'USADO' : 'COMPLETADO'}.`);
+      const result = await scanTicket(formData.ticketId, formData.nodeId, formData.tipo_validacion);
+      
+      // Usar el mensaje exacto del backend (que cumple las HU)
+      let displayMsg = result.mensaje;
+      if (result.saldoRestante !== null && formData.tipo_validacion === 'ENTRADA') {
+        displayMsg += ` - Saldo restante: $${Number(result.saldoRestante).toLocaleString()}`;
+      }
+      
+      setSuccessMsg(displayMsg);
       setTimeout(() => {
         setIsScanning(false);
         setSuccessMsg('');
-      }, 2000);
+      }, 3000);
       fetchData();
     } catch (error: any) {
       console.error('Error al validar:', error);
