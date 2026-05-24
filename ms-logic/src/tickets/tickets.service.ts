@@ -6,6 +6,7 @@ import { Citizen } from '../citizens/entities/citizen.entity';
 import { Schedule } from '../schedules/entities/schedule.entity';
 import { CitizenPaymentMethod } from '../citizen-payment-methods/entities/citizen-payment-method.entity';
 import { v4 as uuidv4 } from 'uuid';
+import { Shift } from '../shifts/entities/shift.entity';
 
 @Injectable()
 export class TicketsService {
@@ -113,5 +114,64 @@ export class TicketsService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async getTripDetails(ticketId: string) {
+    const ticket = await this.ticketRepository.findOne({
+      where: { id: ticketId },
+      relations: [
+        'citizen',
+        'schedule',
+        'schedule.route',
+        'schedule.route.nodes',
+        'schedule.route.nodes.busStop',
+        'schedule.bus',
+        'history',
+        'history.node',
+        'history.node.busStop',
+      ],
+      order: {
+        history: { fecha_hora: 'ASC' }
+      }
+    });
+
+    if (!ticket) {
+      throw new NotFoundException('Boleto no encontrado');
+    }
+
+    // Buscar conductor asignado para este bus en el horario de despacho
+    let driver: any = null;
+    if (ticket.schedule && ticket.schedule.bus) {
+      const dateStr = ticket.schedule.fecha.toString();
+      const timeStr = ticket.schedule.hora_salida.substring(0, 5);
+      const departureTime = new Date(`${dateStr}T${timeStr}:00`);
+      
+      const shift = await this.dataSource.getRepository(Shift).createQueryBuilder('shift')
+        .leftJoinAndSelect('shift.driver', 'driver')
+        .where('shift.bus_id = :busId', { busId: ticket.schedule.bus.id })
+        .andWhere('shift.fecha_inicio <= :departureTime', { departureTime })
+        .andWhere('shift.fecha_fin >= :departureTime', { departureTime })
+        .getOne();
+
+      if (shift) {
+        driver = shift.driver;
+      }
+    }
+
+    // Calcular duración total si el viaje ha finalizado
+    let totalDurationMinutes: number | null = null;
+    const entrada = ticket.history?.find(h => h.tipo_validacion === 'ENTRADA');
+    const salida = ticket.history?.find(h => h.tipo_validacion === 'SALIDA');
+    
+    if (entrada && salida) {
+      const diffMs = new Date(salida.fecha_hora).getTime() - new Date(entrada.fecha_hora).getTime();
+      totalDurationMinutes = Math.max(1, Math.round(diffMs / 60000));
+    }
+
+    return {
+      ticket,
+      driver,
+      totalDurationMinutes,
+    };
   }
 }

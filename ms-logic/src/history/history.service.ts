@@ -14,16 +14,16 @@ export class HistoryService {
     private dataSource: DataSource,
   ) {}
 
-  async scanTicket(ticketId: string, nodeId: string, tipo_validacion: 'ENTRADA' | 'SALIDA' = 'ENTRADA'): Promise<History> {
+  async scanTicket(ticketId: string, nodeId: string, tipo_validacion: 'ENTRADA' | 'SALIDA' = 'ENTRADA') {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // 1. Verificar ticket
+      // 1. Verificar ticket (incluye citizen para devolver saldo)
       const ticket = await queryRunner.manager.findOne(Ticket, { 
         where: { id: ticketId },
-        relations: ['schedule', 'schedule.bus']
+        relations: ['schedule', 'schedule.bus', 'citizen']
       });
       if (!ticket) throw new NotFoundException('Boleto no encontrado');
       
@@ -72,16 +72,30 @@ export class HistoryService {
       const savedHistory = await queryRunner.manager.save(history);
 
       // 4. Marcar boleto según tipo de validación
+      let mensaje = '';
+      let saldoRestante: number | null = null;
+
       if (tipo_validacion === 'ENTRADA') {
         ticket.estado = 'usado'; // En viaje
+        mensaje = 'Abordaje exitoso';
+        saldoRestante = ticket.citizen ? Number(ticket.citizen.saldo) : null;
       } else if (tipo_validacion === 'SALIDA') {
         ticket.estado = 'completado'; // Viaje terminado
+        ticket.fecha_fin = new Date(); // Marca la hora de finalización
+        mensaje = 'Viaje completado - Gracias por usar nuestro servicio';
       }
       
       await queryRunner.manager.save(ticket);
 
       await queryRunner.commitTransaction();
-      return savedHistory;
+
+      // Retornar respuesta enriquecida
+      return {
+        history: savedHistory,
+        mensaje,
+        saldoRestante,
+        fecha_fin: ticket.fecha_fin || null,
+      };
 
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -105,3 +119,4 @@ export class HistoryService {
     }
   }
 }
+

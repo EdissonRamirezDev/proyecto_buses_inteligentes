@@ -3,11 +3,22 @@ import { useAuthStore } from '../../store';
 import { getCitizens, createCitizen } from '../../services/citizensService';
 import { getTransactions } from '../../services/walletService';
 import type { WalletTransaction } from '../../services/walletService';
-import { getTickets } from '../../services/ticketsService';
+import { getTickets, getTripDetails } from '../../services/ticketsService';
 import type { Citizen } from '../../types/citizen.types';
-import type { Ticket } from '../../types/ticket.types';
+import type { Ticket, TripDetails } from '../../types/ticket.types';
 import Button from '../../components/common/Button';
 import { useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix leaflet icon
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const CitizenDashboard = () => {
   const user = useAuthStore((s) => s.user);
@@ -18,6 +29,78 @@ const CitizenDashboard = () => {
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [selectedTripDetails, setSelectedTripDetails] = useState<TripDetails | null>(null);
+  const [tripRoutePositions, setTripRoutePositions] = useState<[number, number][]>([]);
+  const [mapLoading, setMapLoading] = useState(false);
+
+  const buildOSRMCoordinates = (route: any): string => {
+    const coords: string[] = [];
+    if (route.inicio_lat && route.inicio_lng) {
+      coords.push(`${Number(route.inicio_lng)},${Number(route.inicio_lat)}`);
+      if (route.inicio_via_points && route.inicio_via_points.length > 0) {
+        route.inicio_via_points.forEach((vp: [number, number]) => {
+          coords.push(`${vp[1]},${vp[0]}`);
+        });
+      }
+    }
+
+    const nodes = route.nodes?.filter((n: any) => n.busStop) || [];
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      coords.push(`${Number(node.busStop.longitud)},${Number(node.busStop.latitud)}`);
+      if (node.via_points && node.via_points.length > 0) {
+        node.via_points.forEach((vp: [number, number]) => {
+          coords.push(`${vp[1]},${vp[0]}`);
+        });
+      }
+    }
+
+    if (route.fin_lat && route.fin_lng) {
+      coords.push(`${Number(route.fin_lng)},${Number(route.fin_lat)}`);
+    }
+
+    return coords.join(';');
+  };
+
+  useEffect(() => {
+    const fetchOSRM = async () => {
+      if (!selectedTripDetails?.ticket?.schedule?.route) return;
+      const route = selectedTripDetails.ticket.schedule.route;
+      const pointsCount = (route.inicio_lat ? 1 : 0) + (route.fin_lat ? 1 : 0) + (route.nodes?.length || 0);
+      if (pointsCount < 2) {
+        setTripRoutePositions([]);
+        return;
+      }
+      setMapLoading(true);
+      try {
+        const coordinatesString = buildOSRMCoordinates(route);
+        const url = `https://router.project-osrm.org/route/v1/driving/${coordinatesString}?overview=full&geometries=geojson`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.code === 'Ok' && data.routes.length > 0) {
+          const mappedPositions = data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
+          setTripRoutePositions(mappedPositions);
+        } else {
+          setTripRoutePositions([]);
+        }
+      } catch (error) {
+        console.error('Error fetching OSRM for trip:', error);
+        setTripRoutePositions([]);
+      } finally {
+        setMapLoading(false);
+      }
+    };
+    fetchOSRM();
+  }, [selectedTripDetails]);
+
+  const handleViewTripDetails = async (ticketId: string) => {
+    try {
+      const details = await getTripDetails(ticketId);
+      setSelectedTripDetails(details);
+    } catch (error) {
+      console.error('Error fetching trip details:', error);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -161,7 +244,13 @@ const CitizenDashboard = () => {
               ) : tickets.slice(0, 6).map(t => (
                 <div 
                   key={t.id} 
-                  onClick={() => setSelectedTicket(t)}
+                  onClick={() => {
+                    if (t.estado === 'usado' || t.estado === 'completado') {
+                      handleViewTripDetails(t.id);
+                    } else {
+                      setSelectedTicket(t);
+                    }
+                  }}
                   className="px-4 py-3 flex justify-between items-center cursor-pointer hover:bg-slate-700/50 transition-colors group"
                 >
                   <div>
@@ -299,6 +388,154 @@ const CitizenDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Modal de Detalle de Viaje Map (HU-ENTR-2-005) */}
+      {selectedTripDetails && (() => {
+        const entryValidation = selectedTripDetails.ticket.history?.find(h => h.tipo_validacion === 'ENTRADA');
+        const exitValidation = selectedTripDetails.ticket.history?.find(h => h.tipo_validacion === 'SALIDA');
+        const routeColor = selectedTripDetails.ticket.schedule?.route?.color_hex || '#3b82f6';
+        
+        const boardIcon = new L.Icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+          iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+        });
+
+        const alightIcon = new L.Icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+          iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+        });
+
+        const polylinePositions: [number, number][] = tripRoutePositions.length > 0
+          ? tripRoutePositions
+          : (selectedTripDetails.ticket.schedule?.route?.nodes?.filter((n: any) => n.busStop)?.map((n: any) => [Number(n.busStop.latitud), Number(n.busStop.longitud)]) || []);
+
+        return (
+          <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto">
+            <div className="bg-slate-800 border border-slate-700 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl relative flex flex-col my-8">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5 flex justify-between items-center">
+                <div>
+                  <span className="text-xs uppercase tracking-widest text-indigo-200 font-bold">Detalle del Recorrido</span>
+                  <h3 className="text-xl font-bold text-white mt-0.5">
+                    Ruta: {selectedTripDetails.ticket.schedule?.route?.nombre || 'Desconocida'}
+                  </h3>
+                </div>
+                <button 
+                  onClick={() => {
+                    setSelectedTripDetails(null);
+                    setTripRoutePositions([]);
+                  }} 
+                  className="text-indigo-200 hover:text-white font-bold text-lg bg-black/20 hover:bg-black/30 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Map Area */}
+              <div className="h-[280px] w-full border-b border-slate-700 relative">
+                {mapLoading && (
+                  <div className="absolute inset-0 bg-slate-900/50 z-[1000] flex items-center justify-center backdrop-blur-sm">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent"></div>
+                  </div>
+                )}
+                <MapContainer center={[4.6097, -74.0817]} zoom={12} style={{ height: '100%', width: '100%' }}>
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  
+                  {/* Boarding Marker */}
+                  {entryValidation?.node?.busStop && (
+                    <Marker position={[Number(entryValidation.node.busStop.latitud), Number(entryValidation.node.busStop.longitud)]} icon={boardIcon}>
+                      <Popup>
+                        <strong className="text-green-600">Abordaje</strong><br/>
+                        {entryValidation.node.busStop.nombre}<br/>
+                        {new Date(entryValidation.fecha_hora).toLocaleTimeString()}
+                      </Popup>
+                    </Marker>
+                  )}
+
+                  {/* Descent Marker */}
+                  {exitValidation?.node?.busStop && (
+                    <Marker position={[Number(exitValidation.node.busStop.latitud), Number(exitValidation.node.busStop.longitud)]} icon={alightIcon}>
+                      <Popup>
+                        <strong className="text-red-600">Descenso</strong><br/>
+                        {exitValidation.node.busStop.nombre}<br/>
+                        {new Date(exitValidation.fecha_hora).toLocaleTimeString()}
+                      </Popup>
+                    </Marker>
+                  )}
+
+                  {/* Complete Route Path */}
+                  {polylinePositions.length > 1 && (
+                    <Polyline positions={polylinePositions} color={routeColor} weight={4} opacity={0.8} />
+                  )}
+                </MapContainer>
+              </div>
+
+              {/* Travel Info details */}
+              <div className="p-6 space-y-6 text-slate-300 text-sm overflow-y-auto max-h-[300px]">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-700/60">
+                    <span className="text-slate-400 text-xs uppercase block mb-1">Vehículo del Viaje</span>
+                    <p className="font-semibold text-white">Placa: {selectedTripDetails.ticket.schedule?.bus?.placa || 'N/A'}</p>
+                    <p className="text-xs text-slate-400">Modelo: {selectedTripDetails.ticket.schedule?.bus?.modelo || 'N/A'}</p>
+                  </div>
+                  <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-700/60">
+                    <span className="text-slate-400 text-xs uppercase block mb-1">Conductor</span>
+                    <p className="font-semibold text-white">
+                      {selectedTripDetails.driver 
+                        ? `${selectedTripDetails.driver.name} ${selectedTripDetails.driver.last_name}` 
+                        : 'No registrado / Turno sin asignar'}
+                    </p>
+                    <p className="text-xs text-slate-400">Licencia: {selectedTripDetails.driver?.license || 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-700/60 pt-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                     <span className="text-green-400 text-lg">🟢</span>
+                     <div className="flex-1">
+                       <p className="text-xs text-slate-400 uppercase">Paradero de Abordaje</p>
+                       <p className="font-semibold text-white">{entryValidation?.node?.busStop?.nombre || 'Pendiente de registrar'}</p>
+                     </div>
+                     <span className="text-xs font-mono text-slate-400">
+                       {entryValidation ? new Date(entryValidation.fecha_hora).toLocaleTimeString() : 'N/A'}
+                     </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                     <span className="text-red-400 text-lg">🔴</span>
+                     <div className="flex-1">
+                       <p className="text-xs text-slate-400 uppercase">Paradero de Descenso</p>
+                       <p className="font-semibold text-white">{exitValidation?.node?.busStop?.nombre || 'En viaje / Pendiente'}</p>
+                     </div>
+                     <span className="text-xs font-mono text-slate-400">
+                       {exitValidation ? new Date(exitValidation.fecha_hora).toLocaleTimeString() : 'N/A'}
+                     </span>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-700/60 pt-4 flex justify-between items-center">
+                  <div>
+                    <span className="text-slate-400 text-xs uppercase block">Duración Total del Viaje</span>
+                    <span className="text-lg font-bold text-indigo-400">
+                      {selectedTripDetails.totalDurationMinutes !== null
+                        ? `${selectedTripDetails.totalDurationMinutes} minutos`
+                        : 'En curso / Pendiente de registrar salida'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-xs uppercase block text-right">Tarifa Pagada</span>
+                    <span className="text-lg font-bold text-emerald-400 block text-right">
+                      ${Number(selectedTripDetails.ticket.precio_pagado).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
