@@ -35,7 +35,9 @@ export class BusesService {
   }
 
   async findAll() {
-    return await this.busRepository.find();
+    return await this.busRepository.find({
+      relations: ['company']
+    });
   }
 
   async findOne(id: number) {
