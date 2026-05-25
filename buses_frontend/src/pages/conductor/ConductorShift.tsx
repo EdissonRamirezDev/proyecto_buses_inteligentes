@@ -49,7 +49,7 @@ const ConductorShift = () => {
     if (!user?.email) return;
     try {
       const drivers = await getDrivers();
-      const myDriver = drivers.find((d) => d.email === user.email);
+      const myDriver = drivers.find((d) => d.person?.email === user.email || d.email === user.email);
       
       if (myDriver) {
         setDriver(myDriver);
@@ -214,8 +214,10 @@ const ConductorShift = () => {
   }
 
   // Derived Values for Dashboard
-  const initials = driver?.name && driver?.last_name
-    ? `${driver.name[0]}${driver.last_name[0]}`.toUpperCase()
+  const driverName = driver?.person?.name || driver?.name;
+  const driverLastName = driver?.person?.lastName || driver?.last_name;
+  const initials = driverName && driverLastName
+    ? `${driverName[0]}${driverLastName[0]}`.toUpperCase()
     : user?.email ? user.email.slice(0, 2).toUpperCase() : 'C';
 
   const completedShifts = driverShifts.filter((s) => s.estado === 'completado' || s.estado === 'COMPLETADO' || s.estado === 'finalizado').length;
@@ -266,7 +268,7 @@ const ConductorShift = () => {
             {/* User Profile Info card */}
             <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800/60 hidden sm:block">
               <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
-                {driver ? `${driver.name} ${driver.last_name}` : user?.email?.split('@')[0]}
+                {driver ? `${driver.person?.name || driver.name} ${driver.person?.lastName || driver.last_name}` : user?.email?.split('@')[0]}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">
                 Conductor · {driver?.company?.nombre || 'Independiente'}
@@ -356,7 +358,7 @@ const ConductorShift = () => {
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
                 <div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mb-1">{currentDateTime}</p>
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">¡Buen día, {driver?.name || 'Conductor'}!</h1>
+                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">¡Buen día, {driver?.person?.name || driver?.name || 'Conductor'}!</h1>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Resumen y estado de tu jornada laboral hoy.</p>
                 </div>
               </div>
