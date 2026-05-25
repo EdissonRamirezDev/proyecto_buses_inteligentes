@@ -5,6 +5,7 @@ import { CreateCitizenDto } from './dto/create-citizen.dto';
 import { UpdateCitizenDto } from './dto/update-citizen.dto';
 import { Citizen } from './entities/citizen.entity';
 import { WalletTransaction } from './entities/wallet-transaction.entity';
+import { Person } from '../persons/entities/person.entity';
 
 @Injectable()
 export class CitizensService {
@@ -13,19 +14,38 @@ export class CitizensService {
     private readonly citizenRepository: Repository<Citizen>,
     @InjectRepository(WalletTransaction)
     private readonly transactionRepository: Repository<WalletTransaction>,
+    @InjectRepository(Person)
+    private readonly personRepository: Repository<Person>,
   ) {}
 
   async create(createCitizenDto: CreateCitizenDto): Promise<Citizen> {
-    const citizen = this.citizenRepository.create(createCitizenDto);
+    let person = await this.personRepository.findOne({
+      where: { userId: createCitizenDto.userId }
+    });
+
+    if (!person) {
+      person = this.personRepository.create({
+        userId: createCitizenDto.userId,
+        name: createCitizenDto.nombres,
+        lastName: createCitizenDto.apellidos,
+        phone: createCitizenDto.telefono,
+      });
+      person = await this.personRepository.save(person);
+    }
+
+    const citizen = this.citizenRepository.create({
+      ...createCitizenDto,
+      person: person
+    });
     return await this.citizenRepository.save(citizen);
   }
 
   async findAll(): Promise<Citizen[]> {
-    return await this.citizenRepository.find();
+    return await this.citizenRepository.find({ relations: ['person'] });
   }
 
   async findOne(id: string): Promise<Citizen> {
-    const citizen = await this.citizenRepository.findOne({ where: { id } });
+    const citizen = await this.citizenRepository.findOne({ where: { id }, relations: ['person'] });
     if (!citizen) {
       throw new NotFoundException(`Citizen with ID ${id} not found`);
     }
