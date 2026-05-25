@@ -17,6 +17,8 @@ const SchedulesPage = () => {
   const [viewMode, setViewMode] = useState<'table' | 'timeline'>('timeline');
   const [timelineDate, setTimelineDate] = useState(() => new Date().toISOString().split('T')[0]);
 
+  const [formError, setFormError] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     routeId: '',
     busId: 0,
@@ -44,11 +46,30 @@ const SchedulesPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    if (!formData.routeId || !formData.busId) {
+      setFormError('Selecciona una ruta y un bus.');
+      return;
+    }
+
+    const routeNodes = routes.find((r) => r.id === formData.routeId)?.nodes?.length ?? 0;
+    if (routeNodes > 0 && routeNodes < 3) {
+      setFormError('La ruta debe tener al menos 3 paraderos para programar un servicio.');
+      return;
+    }
+
     try {
       await createSchedule(formData);
       setIsCreating(false);
       fetchData();
-    } catch (error) {
+    } catch (error: unknown) {
+      const axiosErr = error as { response?: { data?: { message?: string | string[] } } };
+      const raw = axiosErr.response?.data?.message;
+      const message = Array.isArray(raw)
+        ? raw.join(', ')
+        : raw || 'No se pudo crear la programación. Revisa los datos e intenta de nuevo.';
+      setFormError(message);
       console.error('Error creating schedule:', error);
     }
   };
@@ -123,6 +144,19 @@ const SchedulesPage = () => {
       {isCreating && (
         <div className="bg-slate-800 p-6 rounded-xl shadow-xl mb-6 border border-slate-700">
           <h2 className="text-xl font-semibold mb-4 text-blue-400">Crear Programación de Ruta</h2>
+          <p className="text-sm text-slate-400 mb-4">
+            Antes de programar, el bus debe tener un <strong className="text-slate-300">turno con conductor</strong> activo
+            que cubra la fecha y hora de salida.{' '}
+            <a href="/admin/shifts" className="text-blue-400 underline hover:text-blue-300">
+              Crear turno aquí
+            </a>
+            .
+          </p>
+          {formError && (
+            <div className="mb-4 rounded-lg border border-red-500/50 bg-red-950/40 px-4 py-3 text-sm text-red-300">
+              {formError}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
               <label className="block text-sm font-medium text-slate-300">Ruta Destino</label>
@@ -159,6 +193,17 @@ const SchedulesPage = () => {
                 </select>
               </div>
             )}
+            <div>
+              <label className="block text-sm font-medium text-slate-300">Tolerancia salida (± min)</label>
+              <input
+                type="number"
+                min={0}
+                max={30}
+                value={formData.tolerancia_minutos}
+                onChange={e => setFormData({ ...formData, tolerancia_minutos: Number(e.target.value) })}
+                className="mt-1 block w-full rounded-lg bg-slate-700 border-slate-600 text-white p-3"
+              />
+            </div>
             <div className="lg:col-span-4">
               <Button type="submit" className="w-full bg-green-600 hover:bg-green-700 mt-2">Guardar Programación</Button>
             </div>

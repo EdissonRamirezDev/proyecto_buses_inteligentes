@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DeepPartial } from 'typeorm';
 import { Gps } from './entities/gps.entity';
@@ -14,20 +14,32 @@ export class GpsService {
     private readonly busService: BusesService
   ) { }
 
+  /** Un bus tiene un solo registro GPS (1:1): actualizar posición, no insertar duplicados. */
   async create(createGpsDto: CreateGpsDto) {
-    let bus: any = null;
-    if (createGpsDto.bus_id) {
-      bus = await this.busService
-        .findOne(createGpsDto.bus_id)
-        .catch(() => null);
-
-      if (!bus) {
-        throw new NotFoundException('Bus id not found');
-      }
+    if (!createGpsDto.bus_id) {
+      throw new BadRequestException('bus_id es requerido para reportar GPS');
     }
-    const gps = this.gpsRepository.create({
-      ...createGpsDto,
-      bus: bus ? bus : undefined
+
+    const bus = await this.busService.findOne(createGpsDto.bus_id).catch(() => null);
+    if (!bus) {
+      throw new NotFoundException('Bus id not found');
+    }
+
+    let gps = await this.gpsRepository.findOne({
+      where: { bus: { id: createGpsDto.bus_id } },
+      relations: ['bus'],
+    });
+
+    if (gps) {
+      gps.latitude = createGpsDto.latitude;
+      gps.longitude = createGpsDto.longitude;
+      return await this.gpsRepository.save(gps);
+    }
+
+    gps = this.gpsRepository.create({
+      latitude: createGpsDto.latitude,
+      longitude: createGpsDto.longitude,
+      bus,
     });
     return await this.gpsRepository.save(gps);
   }

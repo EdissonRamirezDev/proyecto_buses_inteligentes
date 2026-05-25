@@ -9,10 +9,17 @@ export interface HistoryEntry {
   node?: Node;
 }
 
+export interface BusCapacitySnapshot {
+  max: number;
+  ocupados: number;
+  disponibles: number;
+}
+
 export interface ScanResponse {
   history: HistoryEntry;
   mensaje: string;
   saldoRestante: number | null;
   fecha_fin: string | null;
+  capacidadBus?: BusCapacitySnapshot | null;
 }
 

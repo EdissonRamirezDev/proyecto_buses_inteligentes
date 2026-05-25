@@ -9,8 +9,17 @@ export interface WalletTransaction {
   fecha_transaccion: string;
 }
 
-export const rechargeWallet = async (citizenId: string, monto: number, referencia: string): Promise<Citizen> => {
-  const response = await httpBusiness.post<Citizen>(`/citizens/${citizenId}/recharge`, { monto, referencia });
+export const rechargeWallet = async (
+  citizenId: string,
+  monto: number,
+  referencia: string,
+  metodoPago?: string,
+): Promise<Citizen> => {
+  const response = await httpBusiness.post<Citizen>(`/citizens/${citizenId}/recharge`, {
+    monto,
+    referencia,
+    metodoPago,
+  });
   return response.data;
 };
 

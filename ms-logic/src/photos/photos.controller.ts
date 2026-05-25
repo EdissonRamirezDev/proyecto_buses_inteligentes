@@ -1,7 +1,19 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Res,
+  NotFoundException,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { PhotosService } from './photos.service';
 import { CreatePhotoDto } from './dto/create-photo.dto';
 import { UpdatePhotoDto } from './dto/update-photo.dto';
+import { resolveBusPhotoPath, resolveIncidentPhotoPath } from './photo-file.util';
 
 @Controller('photos')
 export class PhotosController {
@@ -15,6 +27,26 @@ export class PhotosController {
   @Get()
   findAll() {
     return this.photosService.findAll();
+  }
+
+  @Get('files/buses/:filename')
+  serveBusFile(@Param('filename') filename: string, @Res() res: Response) {
+    try {
+      const filePath = resolveBusPhotoPath(filename);
+      res.sendFile(filePath);
+    } catch {
+      throw new NotFoundException('Foto no encontrada');
+    }
+  }
+
+  @Get('files/:filename')
+  serveFile(@Param('filename') filename: string, @Res() res: Response) {
+    try {
+      const filePath = resolveIncidentPhotoPath(filename);
+      res.sendFile(filePath);
+    } catch {
+      throw new NotFoundException('Foto no encontrada');
+    }
   }
 
   @Get(':id')

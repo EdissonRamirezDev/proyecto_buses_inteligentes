@@ -135,8 +135,15 @@ const DashboardPage = () => {
                 to="/admin/companies"
                 icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>}
                 title="Gestión de empresas"
-                description="Administra las empresas transportadoras"
+                description="CRUD de empresas y enlace Operar para asignar recursos"
                 color="blue"
+              />
+              <DashboardCard
+                to="/admin/companies/operations"
+                icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>}
+                title="Operación por empresa"
+                description="Asignar buses a flota (sin ops. activas); ver turnos y rutas"
+                color="green"
               />
 
             </>
@@ -144,13 +151,29 @@ const DashboardPage = () => {
 
           {/* Módulos Operativos */}
           {(isAdmin || roles.includes('OPERADOR')) && (
-            <DashboardCard
-              to="/admin/buses"
-              icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>}
-              title="Mi flota de buses"
-              description="Gestiona vehículos y mantenimiento"
-              color="green"
-            />
+            <>
+              <DashboardCard
+                to="/admin/buses"
+                icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>}
+                title="Mi flota de buses"
+                description="Gestiona vehículos y mantenimiento"
+                color="green"
+              />
+              <DashboardCard
+                to="/admin/drivers"
+                icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
+                title="Conductores"
+                description="Registra conductores y licencias"
+                color="green"
+              />
+              <DashboardCard
+                to="/admin/shifts"
+                icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+                title="Turnos (bus + conductor)"
+                description="Asigna conductor a bus por fecha y hora — requisito para programar rutas"
+                color="amber"
+              />
+            </>
           )}
 
           {/* Módulos Conductor */}

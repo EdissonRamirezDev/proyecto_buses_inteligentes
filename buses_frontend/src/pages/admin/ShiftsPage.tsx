@@ -12,6 +12,21 @@ import Input from '../../components/common/Input';
 
 type View = 'list' | 'form';
 
+const driverLabel = (d: Driver) => {
+  const name = d.person?.name ?? d.name ?? '';
+  const last = d.person?.lastName ?? d.last_name ?? '';
+  const license = d.license ?? d.licencia ?? '';
+  return `${name} ${last}`.trim() || `Conductor #${d.id}` + (license ? ` (${license})` : '');
+};
+
+const toDatetimeLocal = (iso?: string) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const p = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
 const ShiftsPage = () => {
   const [view, setView] = useState<View>('list');
   const [shiftToEdit, setShiftToEdit] = useState<Shift | null>(null);
@@ -44,8 +59,8 @@ const ShiftsPage = () => {
     setShiftToEdit(shift);
     setBusId(shift.bus?.id?.toString() || '');
     setDriverId(shift.driver?.id?.toString() || '');
-    setFechaInicio(shift.fecha_inicio || '');
-    setFechaFin(shift.fecha_fin || '');
+    setFechaInicio(toDatetimeLocal(shift.fecha_inicio));
+    setFechaFin(toDatetimeLocal(shift.fecha_fin));
     setEstado(shift.estado || 'programado');
     setFormError('');
     setView('form');
@@ -61,12 +76,12 @@ const ShiftsPage = () => {
     setSaving(true);
     setFormError('');
     try {
-      const data: any = {
-        fecha_inicio: fechaInicio,
-        fecha_fin: fechaFin,
+      const data = {
+        fecha_inicio: new Date(fechaInicio).toISOString(),
+        fecha_fin: new Date(fechaFin).toISOString(),
         estado,
-        bus: { id: Number(busId) },
-        driver: { id: Number(driverId) },
+        bus_id: Number(busId),
+        driver_id: Number(driverId),
       };
       if (shiftToEdit?.id) {
         await shiftService.updateShift(shiftToEdit.id, data);
@@ -76,8 +91,12 @@ const ShiftsPage = () => {
       setRefreshTrigger(prev => prev + 1);
       setView('list');
       setShiftToEdit(null);
-    } catch (err: any) {
-      setFormError(err.response?.data?.message || 'Error al guardar el turno.');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string | string[] } } };
+      const raw = axiosErr.response?.data?.message;
+      setFormError(
+        Array.isArray(raw) ? raw.join(', ') : raw || 'Error al guardar el turno.',
+      );
     } finally {
       setSaving(false);
     }
@@ -131,8 +150,11 @@ const ShiftsPage = () => {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Conductor</label>
                   <select required value={driverId} onChange={(e) => setDriverId(e.target.value)} className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-4 py-2.5">
                     <option value="">Seleccione un conductor...</option>
+                    {drivers.length === 0 && (
+                      <option value="" disabled>No hay conductores — créalos en Conductores</option>
+                    )}
                     {drivers.map(d => (
-                      <option key={d.id} value={d.id}>{d.name} {d.last_name} ({d.license})</option>
+                      <option key={d.id} value={d.id}>{driverLabel(d)}</option>
                     ))}
                   </select>
                 </div>

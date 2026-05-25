@@ -11,6 +11,15 @@ export const getBusById = async (id: number): Promise<Bus> => {
   return response.data;
 };
 
+export const syncBusCapacity = async (id: number): Promise<{
+  max: number;
+  ocupados: number;
+  disponibles: number;
+}> => {
+  const response = await httpBusiness.get(`/buses/${id}/capacity`);
+  return response.data;
+};
+
 export const createBus = async (data: Partial<Bus>): Promise<Bus> => {
   const response = await httpBusiness.post<Bus>('/buses', data);
   return response.data;

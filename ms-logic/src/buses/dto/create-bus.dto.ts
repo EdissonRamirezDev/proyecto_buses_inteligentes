@@ -21,5 +21,21 @@ export class CreateBusDto {
 
     @IsOptional()
     @IsNumber()
-    companyId?: number
+    companyId?: number;
+
+    @IsOptional()
+    @IsNumber()
+    anio?: number;
+
+    @IsOptional()
+    @IsNumber()
+    capacidad_sentados?: number;
+
+    @IsOptional()
+    @IsNumber()
+    capacidad_parados?: number;
+
+    @IsOptional()
+    @IsString()
+    foto_url?: string;
 }

@@ -28,7 +28,7 @@ const BusStopsPage = () => {
   const navigate = useNavigate();
   const [busStops, setBusStops] = useState<BusStop[]>([]);
   const [isCreating, setIsCreating] = useState(false);
-  const [formData, setFormData] = useState({ nombre: '', sentido: 'N/A' });
+  const [formData, setFormData] = useState({ nombre: '', sentido: 'Principal' });
   const [position, setPosition] = useState<L.LatLng | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
@@ -129,16 +129,17 @@ const BusStopsPage = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300">Sentido</label>
+                <label className="block text-sm font-medium text-slate-300">Tipo de paradero</label>
                 <select
                   value={formData.sentido} onChange={(e) => setFormData({ ...formData, sentido: e.target.value })}
                   className="mt-1 block w-full rounded-lg bg-slate-700 border-slate-600 text-white p-3 border"
                 >
-                  <option value="N/A">N/A (Bidireccional o Estación)</option>
-                  <option value="Norte-Sur">Norte a Sur</option>
-                  <option value="Sur-Norte">Sur a Norte</option>
-                  <option value="Este-Oeste">Este a Oeste</option>
-                  <option value="Oeste-Este">Oeste a Este</option>
+                  <option value="Principal">Principal</option>
+                  <option value="Transbordo">Transbordo</option>
+                  <option value="Terminal">Terminal</option>
+                  <option value="Punto de control">Punto de control</option>
+                  <option value="Norte-Sur">Norte a Sur (sentido)</option>
+                  <option value="Sur-Norte">Sur a Norte (sentido)</option>
                 </select>
               </div>
               {position && (

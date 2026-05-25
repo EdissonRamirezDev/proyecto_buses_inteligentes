@@ -5,11 +5,20 @@ import type { IncidentType, IncidentSeverity } from '../../types/incident.types'
 
 interface IncidentReportFormProps {
   busId: number;
+  shiftId?: number;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-const IncidentReportForm: React.FC<IncidentReportFormProps> = ({ busId, onSuccess, onCancel }) => {
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+const IncidentReportForm: React.FC<IncidentReportFormProps> = ({ busId, shiftId, onSuccess, onCancel }) => {
   const [type, setType] = useState<IncidentType>('MECANICO');
   const [severity, setSeverity] = useState<IncidentSeverity>('BAJO');
   const [description, setDescription] = useState('');
@@ -47,12 +56,16 @@ const IncidentReportForm: React.FC<IncidentReportFormProps> = ({ busId, onSucces
       const longitude = position?.coords.longitude || 0;
 
       // 2. Crear el incidente general
+      const descWithShift = shiftId
+        ? `${description}\n[turno:${shiftId}]`
+        : description;
+
       const incident = await incidentService.createIncident({
         type,
         severity,
-        description,
+        description: descWithShift,
         date: new Date().toISOString(),
-        state: 'ABIERTO'
+        state: 'ABIERTO',
       });
 
       if (!incident.id) throw new Error('Error al crear el incidente');
@@ -71,9 +84,10 @@ const IncidentReportForm: React.FC<IncidentReportFormProps> = ({ busId, onSucces
       // 4. "Subir" fotos (aquí simularemos enviando una URL ficticia por cada archivo)
       // En una implementación real, primero se subirían a S3/Cloudinary y se obtendría la URL
       for (const photo of photos) {
+        const dataUrl = await fileToDataUrl(photo);
         await incidentService.createPhoto({
-          url: `https://fake-storage.com/photos/${photo.name}`,
-          busIncidentId: busIncident.id
+          url: dataUrl,
+          busIncidentId: busIncident.id,
         });
       }
 

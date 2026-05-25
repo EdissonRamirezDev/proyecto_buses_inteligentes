@@ -6,6 +6,16 @@ export const getSchedules = async (): Promise<Schedule[]> => {
   return response.data;
 };
 
+export const getAvailableSchedulesForCitizen = async (): Promise<Schedule[]> => {
+  const response = await httpBusiness.get<Schedule[]>('/schedules/available/citizen');
+  return response.data;
+};
+
+export const getActiveScheduleByBus = async (busId: number): Promise<Schedule | null> => {
+  const response = await httpBusiness.get<Schedule | null>(`/schedules/active/bus/${busId}`);
+  return response.data;
+};
+
 export const createSchedule = async (data: Partial<Schedule> & { routeId: string; busId: number }): Promise<Schedule> => {
   const response = await httpBusiness.post<Schedule>('/schedules', data);
   return response.data;

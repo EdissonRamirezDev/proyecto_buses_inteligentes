@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store';
-import { getCitizens, createCitizen } from '../../services/citizensService';
+import { createCitizen, findCitizenByUserId } from '../../services/citizensService';
 import { getTransactions } from '../../services/walletService';
 import type { WalletTransaction } from '../../services/walletService';
-import { getTickets, getTripDetails } from '../../services/ticketsService';
+import { getTickets, getActiveTicketsForCitizen, getTripDetails } from '../../services/ticketsService';
+import CitizenTripValidation from '../../components/citizen/CitizenTripValidation';
 import type { Citizen } from '../../types/citizen.types';
 import type { Ticket, TripDetails } from '../../types/ticket.types';
 import Button from '../../components/common/Button';
@@ -32,6 +33,19 @@ const CitizenDashboard = () => {
   const [selectedTripDetails, setSelectedTripDetails] = useState<TripDetails | null>(null);
   const [tripRoutePositions, setTripRoutePositions] = useState<[number, number][]>([]);
   const [mapLoading, setMapLoading] = useState(false);
+  const [tripToast, setTripToast] = useState('');
+  const [activeTripTickets, setActiveTripTickets] = useState<Ticket[]>([]);
+
+  const reloadCitizenData = async (citizenId: string) => {
+    const [txs, tkts, active] = await Promise.all([
+      getTransactions(citizenId),
+      getTickets(),
+      getActiveTicketsForCitizen(citizenId),
+    ]);
+    setTransactions(txs);
+    setTickets(tkts.filter((t: any) => t.citizen?.id === citizenId));
+    setActiveTripTickets(active);
+  };
 
   const buildOSRMCoordinates = (route: any): string => {
     const coords: string[] = [];
@@ -106,18 +120,11 @@ const CitizenDashboard = () => {
     const load = async () => {
       try {
         // Buscar el perfil citizen vinculado a este userId
-        const citizens = await getCitizens();
-        const myCitizen = citizens.find(c => c.userId === user?.id);
+        const myCitizen = user?.id ? await findCitizenByUserId(user.id) : undefined;
         
         if (myCitizen) {
           setCitizen(myCitizen);
-          const [txs, tkts] = await Promise.all([
-            getTransactions(myCitizen.id),
-            getTickets()
-          ]);
-          setTransactions(txs);
-          // Filtrar solo los boletos de este ciudadano
-          setTickets(tkts.filter((t: any) => t.citizen?.id === myCitizen.id));
+          await reloadCitizenData(myCitizen.id);
         } else if (user) {
           // Si no existe el perfil de ciudadano en ms-logic, lo auto-aprovisionamos en segundo plano
           try {
@@ -203,6 +210,23 @@ const CitizenDashboard = () => {
             <p className="text-xs text-slate-500 mt-2">En total desde tu registro</p>
           </div>
         </div>
+
+        {tripToast && (
+          <div className="mb-6 p-4 rounded-xl bg-indigo-900/40 border border-indigo-500/50 text-indigo-100 text-sm">
+            {tripToast}
+          </div>
+        )}
+
+        {citizen?.id && (
+          <div className="mb-8">
+            <CitizenTripValidation
+              citizenId={citizen.id}
+              tickets={activeTripTickets}
+              onDone={() => reloadCitizenData(citizen.id).catch(console.error)}
+              onToast={setTripToast}
+            />
+          </div>
+        )}
 
         {/* Sección de contenido */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -483,8 +507,8 @@ const CitizenDashboard = () => {
                   <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-700/60">
                     <span className="text-slate-400 text-xs uppercase block mb-1">Conductor</span>
                     <p className="font-semibold text-white">
-                      {selectedTripDetails.driver 
-                        ? `${selectedTripDetails.driver.name} ${selectedTripDetails.driver.last_name}` 
+                      {selectedTripDetails.driver
+                        ? `${selectedTripDetails.driver.name || ''} ${selectedTripDetails.driver.last_name || ''}`.trim() || 'Conductor asignado'
                         : 'No registrado / Turno sin asignar'}
                     </p>
                     <p className="text-xs text-slate-400">Licencia: {selectedTripDetails.driver?.license || 'N/A'}</p>

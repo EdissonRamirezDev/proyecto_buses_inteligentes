@@ -1,9 +1,10 @@
 import { httpBusiness } from './http';
 import type { Driver } from '../types/driver.types';
+import { mapDriverFromApi } from '../utils/driverUtils';
 
 export const getDrivers = async (): Promise<Driver[]> => {
   const response = await httpBusiness.get<Driver[]>('/drivers');
-  return response.data;
+  return response.data.map(mapDriverFromApi);
 };
 
 export const getDriverById = async (id: number): Promise<Driver> => {
@@ -11,9 +12,16 @@ export const getDriverById = async (id: number): Promise<Driver> => {
   return response.data;
 };
 
-export const createDriver = async (data: Partial<Driver>): Promise<Driver> => {
+export const createDriver = async (data: {
+  name: string;
+  last_name: string;
+  license: string;
+  email?: string;
+  phone?: string;
+  status?: string;
+}): Promise<Driver> => {
   const response = await httpBusiness.post<Driver>('/drivers', data);
-  return response.data;
+  return mapDriverFromApi(response.data);
 };
 
 export const updateDriver = async (id: number, data: Partial<Driver>): Promise<Driver> => {

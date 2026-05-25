@@ -1,4 +1,12 @@
 import { httpBusiness } from './http';
+import { API_BUSINESS_URL } from '../utils/constants';
+
+export function resolvePhotoPublicUrl(url?: string): string {
+  if (!url) return '';
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  const origin = (API_BUSINESS_URL || 'http://localhost:3000/api').replace(/\/api\/?$/, '');
+  return url.startsWith('/') ? `${origin}${url}` : `${origin}/${url}`;
+}
 
 export interface Photo {
   id: string;
@@ -36,7 +44,7 @@ const mapIncident = (backendInc: any): Incident => {
     bus: bi.bus ? { id: bi.bus.id?.toString(), placa: bi.bus.placa } : undefined,
     photos: (bi.photos || []).map((p: any) => ({
       id: p.id?.toString() || '',
-      url_imagen: p.url || '',
+      url_imagen: resolvePhotoPublicUrl(p.url),
       fecha_captura: p.uploadedAt || ''
     }))
   }));
@@ -66,10 +74,44 @@ const mapIncident = (backendInc: any): Incident => {
   } as any;
 };
 
-export const getIncidents = async (): Promise<Incident[]> => {
-  const response = await httpBusiness.get<any[]>('/incidents');
+export interface IncidentStats {
+  total: number;
+  resueltos: number;
+  tasaResolucion: number;
+  porTipo: Record<string, number>;
+}
+
+export const getIncidents = async (busId?: string, empresaId?: string): Promise<Incident[]> => {
+  const params: Record<string, string> = {};
+  if (busId) params.busId = busId;
+  if (empresaId) params.empresaId = empresaId;
+  const response = await httpBusiness.get<any[]>('/incidents', { params });
   return response.data.map(mapIncident);
 };
+
+export const getIncidentStats = async (
+  busId?: string,
+  empresaId?: string,
+): Promise<IncidentStats> => {
+  const params: Record<string, string> = {};
+  if (busId) params.busId = busId;
+  if (empresaId) params.empresaId = empresaId;
+  const response = await httpBusiness.get<IncidentStats>('/incidents/stats', { params });
+  return response.data;
+};
+
+export async function updateIncident(
+  id: string | number,
+  payload: string | { state?: string; followUpComment?: string },
+): Promise<Incident> {
+  const body = typeof payload === 'string' ? { state: payload } : payload;
+  const response = await httpBusiness.patch<any>(`/incidents/${id}`, body);
+  return mapIncident(response.data);
+}
+
+export async function updateIncidentStatus(id: string, estado: string): Promise<Incident> {
+  return updateIncident(id, { state: estado });
+}
 
 export const createIncident = async (data: { titulo: string, descripcion: string, categoria: string, shiftId: string, busId?: string, photos?: string[] }): Promise<Incident> => {
   const response = await httpBusiness.post<any>('/incidents', {
@@ -79,10 +121,5 @@ export const createIncident = async (data: { titulo: string, descripcion: string
     date: new Date().toISOString(),
     state: 'REPORTADO'
   });
-  return mapIncident(response.data);
-};
-
-export const updateIncidentStatus = async (id: string, estado: string): Promise<Incident> => {
-  const response = await httpBusiness.patch<any>(`/incidents/${id}`, { state: estado });
   return mapIncident(response.data);
 };

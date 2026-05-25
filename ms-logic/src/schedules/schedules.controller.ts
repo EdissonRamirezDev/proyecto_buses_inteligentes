@@ -17,6 +17,16 @@ export class SchedulesController {
     return this.schedulesService.findAll();
   }
 
+  @Get('available/citizen')
+  findAvailableForCitizens() {
+    return this.schedulesService.findAvailableForCitizens();
+  }
+
+  @Get('active/bus/:busId')
+  findActiveByBus(@Param('busId') busId: string) {
+    return this.schedulesService.findActiveByBusId(Number(busId));
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.schedulesService.findOne(id);

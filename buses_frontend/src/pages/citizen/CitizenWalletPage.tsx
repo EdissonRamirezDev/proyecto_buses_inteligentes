@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store';
-import { getCitizens } from '../../services/citizensService';
+import { createCitizen, findCitizenByUserId } from '../../services/citizensService';
 import { rechargeWallet, getTransactions } from '../../services/walletService';
 import type { WalletTransaction } from '../../services/walletService';
 import type { Citizen } from '../../types/citizen.types';
@@ -28,13 +28,25 @@ const CitizenWalletPage = () => {
 
   const loadData = async () => {
     try {
-      const data = await getCitizens();
-      const myCitizen = data.find(c => c.userId === user?.id);
-      if (myCitizen) {
-        setCitizen(myCitizen);
-        const txs = await getTransactions(myCitizen.id);
-        setTransactions(txs);
+      if (!user?.id) return;
+
+      let myCitizen = await findCitizenByUserId(user.id);
+
+      if (!myCitizen) {
+        const names = user.name ? user.name.split(' ') : ['Ciudadano'];
+        myCitizen = await createCitizen({
+          userId: user.id,
+          nombres: names[0],
+          apellidos: names.slice(1).join(' ') || 'Registrado',
+          telefono: '',
+          direccion: 'Sin dirección registrada',
+          fecha_nacimiento: new Date().toISOString().split('T')[0],
+        });
       }
+
+      setCitizen(myCitizen);
+      const txs = await getTransactions(myCitizen.id);
+      setTransactions(txs);
     } catch (error) {
       console.error('Error loading citizen wallet data:', error);
       setMensaje({ tipo: 'error', texto: 'No se pudo cargar la billetera.' });
@@ -75,10 +87,10 @@ const CitizenWalletPage = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       const referencia = `EPAYCO-${Math.floor(Math.random() * 10000000)}`;
-      const updatedCitizen = await rechargeWallet(citizen.id, monto, referencia);
+      const updatedCitizen = await rechargeWallet(citizen.id, monto, referencia, metodo);
       
       setCitizen(updatedCitizen);
-      setMensaje({ tipo: 'exito', texto: `¡Recarga exitosa! Nuevo saldo: $${updatedCitizen.saldo.toLocaleString()}` });
+      setMensaje({ tipo: 'exito', texto: `¡Recarga exitosa! Nuevo saldo: $${Number(updatedCitizen.saldo).toLocaleString()}` });
       
       // Actualizar transacciones
       const txs = await getTransactions(updatedCitizen.id);

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store';
-import { getCitizens } from '../../services/citizensService';
-import { getSchedules } from '../../services/schedulesService';
+import { findCitizenByUserId } from '../../services/citizensService';
+import { getAvailableSchedulesForCitizen } from '../../services/schedulesService';
 import { purchaseTicket } from '../../services/ticketsService';
 import type { Citizen } from '../../types/citizen.types';
 import type { Schedule } from '../../types/schedule.types';
@@ -22,11 +22,10 @@ const CitizenPurchasePage = () => {
 
   const loadData = async () => {
     try {
-      const [citizensData, schedulesData] = await Promise.all([
-        getCitizens(),
-        getSchedules()
+      const [myCitizen, schedulesData] = await Promise.all([
+        user?.id ? findCitizenByUserId(user.id) : Promise.resolve(undefined),
+        getAvailableSchedulesForCitizen(),
       ]);
-      const myCitizen = citizensData.find(c => c.userId === user?.id);
       if (myCitizen) {
         setCitizen(myCitizen);
       }

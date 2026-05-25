@@ -17,8 +17,53 @@ export class IncidentsService {
     return await this.incidentRepository.save(incident);
   }
 
-  async findAll() {
-    return await this.incidentRepository.find({ relations: ['busesIncidents', 'busesIncidents.bus', 'busesIncidents.photos'] });
+  private readonly incidentRelations = [
+    'busesIncidents',
+    'busesIncidents.bus',
+    'busesIncidents.bus.company',
+    'busesIncidents.photos',
+  ] as const;
+
+  private matchesFilters(incident: Incident, busId?: number, empresaId?: number): boolean {
+    const links = incident.busesIncidents ?? [];
+    if (busId !== undefined) {
+      return links.some((bi) => bi.bus?.id === busId);
+    }
+    if (empresaId !== undefined) {
+      return links.some((bi) => bi.bus?.company?.id === empresaId);
+    }
+    return true;
+  }
+
+  async findAll(busId?: number, empresaId?: number) {
+    const incidents = await this.incidentRepository.find({
+      relations: [...this.incidentRelations],
+    });
+
+    if (busId === undefined && empresaId === undefined) {
+      return incidents;
+    }
+
+    return incidents.filter((inc) => this.matchesFilters(inc, busId, empresaId));
+  }
+
+  async getStats(busId?: number, empresaId?: number) {
+    const incidents = await this.findAll(busId, empresaId);
+    const total = incidents.length;
+    const resueltos = incidents.filter((i) => {
+      const state = (i.state || '').toUpperCase();
+      return state === 'RESUELTO' || state === 'CERRADO' || state === 'RESOLVED';
+    }).length;
+
+    const porTipo: Record<string, number> = {};
+    for (const inc of incidents) {
+      const tipo = inc.type || 'OTRO';
+      porTipo[tipo] = (porTipo[tipo] ?? 0) + 1;
+    }
+
+    const tasaResolucion = total > 0 ? Math.round((resueltos / total) * 100) : 0;
+
+    return { total, resueltos, tasaResolucion, porTipo };
   }
 
   async findOne(id: number) {

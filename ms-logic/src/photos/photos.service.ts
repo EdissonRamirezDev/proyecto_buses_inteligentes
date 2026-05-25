@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { persistIncidentPhotoUrl } from './photo-file.util';
 import { CreatePhotoDto } from './dto/create-photo.dto';
 import { UpdatePhotoDto } from './dto/update-photo.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -25,9 +26,10 @@ export class PhotosService {
         throw new NotFoundException('Bus Incident id not found');
       }
     }
+    const storedUrl = persistIncidentPhotoUrl(createPhotoDto.url);
     const photo = this.photoRepository.create({
-      ...createPhotoDto,
-      busIncident: busIncident
+      url: storedUrl,
+      busIncident,
     });
     return await this.photoRepository.save(photo);
   }

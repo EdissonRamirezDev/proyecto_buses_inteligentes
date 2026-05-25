@@ -1,9 +1,15 @@
 import { httpBusiness } from './http';
 import type { Citizen } from '../types/citizen.types';
+import { getCitizenUserId } from '../types/citizen.types';
 
 export const getCitizens = async (): Promise<Citizen[]> => {
   const response = await httpBusiness.get<Citizen[]>('/citizens');
   return response.data;
+};
+
+export const findCitizenByUserId = async (userId: string): Promise<Citizen | undefined> => {
+  const citizens = await getCitizens();
+  return citizens.find((c) => getCitizenUserId(c) === userId);
 };
 
 export const createCitizen = async (data: Omit<Citizen, 'id' | 'saldo'>): Promise<Citizen> => {
