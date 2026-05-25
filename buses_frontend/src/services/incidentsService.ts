@@ -28,17 +28,61 @@ export interface Incident {
   incidentBuses: IncidentBus[];
 }
 
+const mapIncident = (backendInc: any): Incident => {
+  const busesInc = backendInc.busesIncidents || [];
+  const incidentBusesMapped = busesInc.map((bi: any) => ({
+    id: bi.id?.toString() || '',
+    nivel_gravedad: bi.latitude ? 1 : 0,
+    bus: bi.bus ? { id: bi.bus.id?.toString(), placa: bi.bus.placa } : undefined,
+    photos: (bi.photos || []).map((p: any) => ({
+      id: p.id?.toString() || '',
+      url_imagen: p.url || '',
+      fecha_captura: p.uploadedAt || ''
+    }))
+  }));
+
+  // Mapear estado
+  let estadoMapped = backendInc.state || 'REPORTADO';
+  if (estadoMapped === 'ABIERTO') {
+    estadoMapped = 'REPORTADO';
+  }
+
+  return {
+    id: backendInc.id?.toString() || '',
+    titulo: backendInc.type || '',
+    descripcion: backendInc.description || '',
+    categoria: backendInc.type || 'OTRO',
+    estado: estadoMapped as any,
+    fecha_reporte: backendInc.date || '',
+    
+    // Mantener campos nativos del backend para compatibilidad del panel de empresa
+    type: backendInc.type || '',
+    severity: backendInc.severity || '',
+    description: backendInc.description || '',
+    date: backendInc.date || '',
+    state: backendInc.state || '',
+    
+    incidentBuses: incidentBusesMapped
+  } as any;
+};
+
 export const getIncidents = async (): Promise<Incident[]> => {
-  const response = await httpBusiness.get<Incident[]>('/incidents');
-  return response.data;
+  const response = await httpBusiness.get<any[]>('/incidents');
+  return response.data.map(mapIncident);
 };
 
 export const createIncident = async (data: { titulo: string, descripcion: string, categoria: string, shiftId: string, busId?: string, photos?: string[] }): Promise<Incident> => {
-  const response = await httpBusiness.post<Incident>('/incidents', data);
-  return response.data;
+  const response = await httpBusiness.post<any>('/incidents', {
+    type: data.categoria || 'OTRO',
+    severity: 'MEDIO',
+    description: data.descripcion || '',
+    date: new Date().toISOString(),
+    state: 'REPORTADO'
+  });
+  return mapIncident(response.data);
 };
 
 export const updateIncidentStatus = async (id: string, estado: string): Promise<Incident> => {
-  const response = await httpBusiness.patch<Incident>(`/incidents/${id}`, { estado });
-  return response.data;
+  const response = await httpBusiness.patch<any>(`/incidents/${id}`, { state: estado });
+  return mapIncident(response.data);
 };

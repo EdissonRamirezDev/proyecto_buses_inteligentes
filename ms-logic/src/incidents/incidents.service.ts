@@ -18,11 +18,11 @@ export class IncidentsService {
   }
 
   async findAll() {
-    return await this.incidentRepository.find({ relations: ['busesIncidents'] });
+    return await this.incidentRepository.find({ relations: ['busesIncidents', 'busesIncidents.bus', 'busesIncidents.photos'] });
   }
 
   async findOne(id: number) {
-    const incident = await this.incidentRepository.findOne({ where: { id }, relations: ['busesIncidents'] });
+    const incident = await this.incidentRepository.findOne({ where: { id }, relations: ['busesIncidents', 'busesIncidents.bus', 'busesIncidents.photos'] });
     if (!incident) throw new NotFoundException(`Incident #${id} no encontrado`);
     return incident;
   }
