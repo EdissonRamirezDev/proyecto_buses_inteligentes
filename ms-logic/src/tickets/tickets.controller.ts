@@ -17,8 +17,14 @@ export class TicketsController {
     return this.ticketsService.findAll();
   }
 
+  @Get(':id/trip-details')
+  getTripDetails(@Param('id') id: string) {
+    return this.ticketsService.getTripDetails(id);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.ticketsService.remove(id);
   }
 }
+

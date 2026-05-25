@@ -8,3 +8,11 @@ export interface HistoryEntry {
   ticket?: Ticket;
   node?: Node;
 }
+
+export interface ScanResponse {
+  history: HistoryEntry;
+  mensaje: string;
+  saldoRestante: number | null;
+  fecha_fin: string | null;
+}
+

@@ -18,6 +18,13 @@ const CitizenWalletPage = () => {
   const [loading, setLoading] = useState(true);
   const [isRecharging, setIsRecharging] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: 'exito' | 'error', texto: string } | null>(null);
+  const [showEpaycoModal, setShowEpaycoModal] = useState(false);
+
+  const COMISION_FIJA = 900;
+  const COMISION_PORCENTAJE = 0.029; // 2.9%
+  const totalComision = monto * COMISION_PORCENTAJE + COMISION_FIJA;
+  const totalAPagar = monto + totalComision;
+  const saldoProyectado = (citizen?.saldo ? Number(citizen.saldo) : 0) + monto;
 
   const loadData = async () => {
     try {
@@ -42,8 +49,22 @@ const CitizenWalletPage = () => {
     }
   }, [user]);
 
-  const handleRecharge = async (e: React.FormEvent) => {
+  const handleStartPayment = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!citizen) return;
+    if (monto < 5000) {
+      setMensaje({ tipo: 'error', texto: 'El monto mínimo es $5.000' });
+      return;
+    }
+    if (monto > 500000) {
+      setMensaje({ tipo: 'error', texto: 'El monto máximo es $500.000' });
+      return;
+    }
+    setShowEpaycoModal(true);
+    setMensaje(null);
+  };
+
+  const handleConfirmRecharge = async () => {
     if (!citizen) return;
 
     setIsRecharging(true);
@@ -51,7 +72,7 @@ const CitizenWalletPage = () => {
 
     try {
       // Simular tiempo de procesamiento de ePayco
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       const referencia = `EPAYCO-${Math.floor(Math.random() * 10000000)}`;
       const updatedCitizen = await rechargeWallet(citizen.id, monto, referencia);
@@ -62,8 +83,11 @@ const CitizenWalletPage = () => {
       // Actualizar transacciones
       const txs = await getTransactions(updatedCitizen.id);
       setTransactions(txs);
+      setShowEpaycoModal(false);
+      setMonto(10000); // Reset monto
     } catch (error: any) {
       setMensaje({ tipo: 'error', texto: error.response?.data?.message || 'Hubo un error al procesar el pago.' });
+      setShowEpaycoModal(false);
     } finally {
       setIsRecharging(false);
     }
@@ -98,14 +122,32 @@ const CitizenWalletPage = () => {
               <span className="text-3xl font-bold text-emerald-400">${Number(citizen?.saldo || 0).toLocaleString()}</span>
             </div>
 
-            <form onSubmit={handleRecharge} className="space-y-4">
+            <form onSubmit={handleStartPayment} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Monto a Recargar</label>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Montos Rápidos</label>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {[10000, 20000, 50000, 100000].map(val => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setMonto(val)}
+                      className={`py-2 rounded-lg text-sm font-bold border transition-colors ${
+                        monto === val 
+                          ? 'bg-indigo-600 border-indigo-500 text-white' 
+                          : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'
+                      }`}
+                    >
+                      ${val.toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+
+                <label className="block text-sm font-medium text-slate-400 mb-1">Otro Monto ($5k - $500k)</label>
                 <div className="relative">
                   <span className="absolute left-3 top-3 text-slate-400">$</span>
                   <input 
                     type="number" 
-                    min="1000" step="1000"
+                    min="5000" max="500000" step="1000"
                     value={monto} 
                     onChange={(e) => setMonto(Number(e.target.value))}
                     className="w-full pl-8 bg-slate-900 border border-slate-600 text-white rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -114,17 +156,28 @@ const CitizenWalletPage = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Método de Pago</label>
-                <select 
-                  value={metodo} 
-                  onChange={(e) => setMetodo(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                >
-                  <option value="pse">PSE (Transferencia Bancaria)</option>
-                  <option value="tarjeta_credito">Tarjeta de Crédito / Débito</option>
-                  <option value="efectivo">Punto Efecty / Baloto</option>
-                </select>
+              {/* Detalle de recarga */}
+              <div className="bg-slate-900 p-4 rounded-lg space-y-2 text-sm border border-slate-700">
+                <div className="flex justify-between text-slate-400">
+                  <span>Saldo Actual:</span>
+                  <span>${Number(citizen?.saldo || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Monto a recargar:</span>
+                  <span>${monto.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Comisión ePayco (2.9% + $900):</span>
+                  <span>${Math.round(totalComision).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between font-bold text-white border-t border-slate-700 pt-2 mt-2">
+                  <span>Total a Pagar:</span>
+                  <span>${Math.round(totalAPagar).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between font-bold text-emerald-400">
+                  <span>Saldo Proyectado:</span>
+                  <span>${Math.round(saldoProyectado).toLocaleString()}</span>
+                </div>
               </div>
 
               {mensaje && (
@@ -135,10 +188,9 @@ const CitizenWalletPage = () => {
 
               <Button 
                 type="submit" 
-                disabled={isRecharging}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 py-4 font-bold text-lg shadow-lg shadow-indigo-600/30"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 py-4 font-bold text-lg shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2"
               >
-                {isRecharging ? 'Procesando con ePayco...' : `Recargar $${monto.toLocaleString()}`}
+                Continuar al Pago
               </Button>
             </form>
           </div>
@@ -184,6 +236,83 @@ const CitizenWalletPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal Simulado de ePayco */}
+      {showEpaycoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-white text-slate-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+            <div className="bg-slate-100 p-4 border-b border-slate-200 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-[#ff6b00] rounded-full flex items-center justify-center text-white font-bold italic">e</div>
+                <span className="font-bold text-xl tracking-tight text-[#ff6b00]">payco</span>
+              </div>
+              <button onClick={() => setShowEpaycoModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            
+            <div className="p-6 space-y-6 flex-grow">
+              <div className="text-center">
+                <p className="text-slate-500 text-sm">Resumen de compra</p>
+                <h3 className="text-3xl font-bold text-slate-800">${Math.round(totalAPagar).toLocaleString()}</h3>
+                <p className="text-slate-400 text-xs mt-1">Ref: {`EPAYCO-${Math.floor(Math.random() * 10000000)}`}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Selecciona un medio de pago</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button onClick={() => setMetodo('pse')} className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${metodo === 'pse' ? 'border-[#ff6b00] bg-orange-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                    <span className="font-bold text-slate-700">PSE</span>
+                  </button>
+                  <button onClick={() => setMetodo('tarjeta')} className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${metodo === 'tarjeta' ? 'border-[#ff6b00] bg-orange-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                    <span className="text-xs font-bold text-slate-700">Tarjeta</span>
+                  </button>
+                  <button onClick={() => setMetodo('efectivo')} className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${metodo === 'efectivo' ? 'border-[#ff6b00] bg-orange-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                    <span className="text-xs font-bold text-slate-700">Efectivo</span>
+                  </button>
+                </div>
+              </div>
+
+              {metodo === 'tarjeta' && (
+                <div className="space-y-3 animate-in fade-in">
+                  <input type="text" placeholder="Número de tarjeta" className="w-full border border-slate-300 rounded-lg p-3 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#ff6b00]" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <input type="text" placeholder="MM/YY" className="w-full border border-slate-300 rounded-lg p-3 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#ff6b00]" />
+                    <input type="text" placeholder="CVC" className="w-full border border-slate-300 rounded-lg p-3 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#ff6b00]" />
+                  </div>
+                </div>
+              )}
+              
+              {metodo === 'pse' && (
+                <div className="space-y-3 animate-in fade-in">
+                  <select className="w-full border border-slate-300 rounded-lg p-3 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#ff6b00]">
+                    <option>Selecciona tu banco</option>
+                    <option>Bancolombia</option>
+                    <option>Davivienda</option>
+                    <option>Nequi</option>
+                    <option>Banco de Bogotá</option>
+                  </select>
+                </div>
+              )}
+
+              <Button 
+                onClick={handleConfirmRecharge} 
+                disabled={isRecharging}
+                className="w-full bg-[#ff6b00] hover:bg-[#e66000] py-4 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 flex justify-center items-center gap-2"
+              >
+                {isRecharging ? (
+                  <>
+                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                    Procesando Pago...
+                  </>
+                ) : `Pagar $${Math.round(totalAPagar).toLocaleString()}`}
+              </Button>
+
+              <div className="flex justify-center items-center gap-1 text-xs text-slate-400 mt-4">
+                🔒 Pagos seguros procesados por ePayco
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

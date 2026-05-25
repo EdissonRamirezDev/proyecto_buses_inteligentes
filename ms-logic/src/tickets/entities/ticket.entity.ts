@@ -21,6 +21,9 @@ export class Ticket {
   @CreateDateColumn()
   fecha_compra: Date;
 
+  @Column({ type: 'timestamp', nullable: true })
+  fecha_fin: Date;
+
   @ManyToOne(() => Citizen, (citizen) => citizen.tickets, { onDelete: 'CASCADE' })
   citizen: Citizen;
 
