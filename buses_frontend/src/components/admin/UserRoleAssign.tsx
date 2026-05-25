@@ -126,7 +126,7 @@ const UserRoleAssign = ({ user, onSuccess }: UserRoleAssignProps) => {
           personId: person.id,
           companyId: Number(selectedCompanyId),
         })
-      } else if (role.name === 'Conductor') {
+      } else if (role.name === 'Conductor' || role.name === 'CONDUCTOR') {
         // 1. Sincronizar usuario a Persona en ms-logic
         const nameParts = user.name ? user.name.split(' ') : ['Usuario', 'Sistema']
         const name = nameParts[0]
@@ -185,7 +185,7 @@ const UserRoleAssign = ({ user, onSuccess }: UserRoleAssignProps) => {
       // Quitar rol en ms-security
       await userRoleService.removeRoleFromUser(userRoleId)
 
-      if (role.name === 'Conductor') {
+      if (role.name === 'Conductor' || role.name === 'CONDUCTOR') {
         try {
           const allDrivers = await driverService.getDrivers()
           const currentDriver = allDrivers.find(d => d.person?.userId === user.id)
