@@ -58,3 +58,6 @@ __pycache__/
 venv/
 env/
 .venv/
+
+# Fotos de incidentes guardadas en disco (ms-logic)
+ms-logic/uploads/

@@ -15,5 +15,11 @@ export interface Driver {
     email?: string;
     phone?: string;
   };
+  company?: {
+    id?: number;
+    nombre?: string;
+    name?: string;
+  };
+  licencia?: string;
 }
 

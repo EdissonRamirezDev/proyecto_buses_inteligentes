@@ -47,7 +47,11 @@ const HistoryPage = () => {
       if (result.saldoRestante !== null && formData.tipo_validacion === 'ENTRADA') {
         displayMsg += ` - Saldo restante: $${Number(result.saldoRestante).toLocaleString()}`;
       }
-      
+      if (result.capacidadBus) {
+        const { ocupados, max, disponibles } = result.capacidadBus;
+        displayMsg += ` — Bus: ${ocupados}/${max} abordados, ${disponibles} asientos libres`;
+      }
+
       setSuccessMsg(displayMsg);
       setTimeout(() => {
         setIsScanning(false);

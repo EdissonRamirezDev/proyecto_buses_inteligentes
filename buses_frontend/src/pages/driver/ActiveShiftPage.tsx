@@ -79,15 +79,25 @@ const ActiveShiftPage = () => {
                   </div>
                 </div>
                 <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold rounded-full">
-                  {shift.estado}
+                  {shift.estado_base || (shift.estado?.split(';;')[0] ?? shift.estado)}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-bold">Inicio</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-bold">Inicio real</p>
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {shift.fecha_inicio ? new Date(shift.fecha_inicio).toLocaleTimeString() : 'N/A'}
+                    {shift.hora_inicio_real
+                      ? new Date(shift.hora_inicio_real).toLocaleString('es-CO')
+                      : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-bold">Ventana programada</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {shift.fecha_inicio && shift.fecha_fin
+                      ? `${new Date(shift.fecha_inicio).toLocaleString('es-CO')} – ${new Date(shift.fecha_fin).toLocaleTimeString('es-CO')}`
+                      : 'N/A'}
                   </p>
                 </div>
                 <div>

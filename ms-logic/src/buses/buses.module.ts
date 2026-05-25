@@ -7,9 +7,11 @@ import { Shift } from 'src/shifts/entities/shift.entity';
 import { Gps } from 'src/gps/entities/gps.entity';
 import { Company } from 'src/companies/entities/company.entity';
 import { CompaniesModule } from 'src/companies/companies.module';
+import { Ticket } from 'src/tickets/entities/ticket.entity';
+import { Schedule } from 'src/schedules/entities/schedule.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Bus, Shift, Gps, Company]),
+  imports: [TypeOrmModule.forFeature([Bus, Shift, Gps, Company, Ticket, Schedule]),
     CompaniesModule],
   controllers: [BusesController],
   providers: [BusesService],

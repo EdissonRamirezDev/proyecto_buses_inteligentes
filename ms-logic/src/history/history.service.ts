@@ -4,6 +4,7 @@ import { Repository, DataSource } from 'typeorm';
 import { History } from './entities/history.entity';
 import { Ticket } from '../tickets/entities/ticket.entity';
 import { Node } from '../nodes/entities/node.entity';
+import { BusesService } from '../buses/buses.service';
 
 @Injectable()
 export class HistoryService {
@@ -12,6 +13,7 @@ export class HistoryService {
     @InjectRepository(Ticket) private readonly ticketRepository: Repository<Ticket>,
     @InjectRepository(Node) private readonly nodeRepository: Repository<Node>,
     private dataSource: DataSource,
+    private readonly busesService: BusesService,
   ) {}
 
   async scanTicket(ticketId: string, nodeId: string, tipo_validacion: 'ENTRADA' | 'SALIDA' = 'ENTRADA') {
@@ -44,18 +46,20 @@ export class HistoryService {
            throw new BadRequestException('El despacho asociado a este boleto ya finalizó.');
          }
 
-         // Validar capacidad
          const bus = ticket.schedule.bus;
-         if (bus && bus.capacidad) {
+         if (bus?.id) {
+            const max = this.busesService.getMaxCapacity(bus);
             const ocupacionActual = await queryRunner.manager.count(Ticket, {
-               where: { 
+               where: {
                  schedule: { id: ticket.schedule.id },
-                 estado: 'usado'
-               }
+                 estado: 'usado',
+               },
             });
 
-            if (ocupacionActual >= bus.capacidad) {
-               throw new BadRequestException(`No se puede abordar. El bus ha alcanzado su capacidad máxima (${bus.capacidad} pasajeros).`);
+            if (max > 0 && ocupacionActual >= max) {
+               throw new BadRequestException(
+                 `No se puede abordar. El bus ha alcanzado su capacidad máxima (${max} pasajeros).`,
+               );
             }
          }
       }
@@ -89,12 +93,22 @@ export class HistoryService {
 
       await queryRunner.commitTransaction();
 
+      let capacidadBus: { max: number; ocupados: number; disponibles: number } | null = null;
+      const busId = ticket.schedule?.bus?.id;
+      if (busId) {
+        capacidadBus = await this.busesService.syncCapacityFromTickets(
+          busId,
+          ticket.schedule?.id,
+        );
+      }
+
       // Retornar respuesta enriquecida
       return {
         history: savedHistory,
         mensaje,
         saldoRestante,
         fecha_fin: ticket.fecha_fin || null,
+        capacidadBus,
       };
 
     } catch (error) {

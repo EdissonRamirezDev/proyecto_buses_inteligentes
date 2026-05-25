@@ -35,9 +35,9 @@ export class CitizensController {
   @Post(':id/recharge')
   rechargeWallet(
     @Param('id') id: string,
-    @Body() body: { monto: number; referencia: string }
+    @Body() body: { monto: number; referencia: string; metodoPago?: string }
   ) {
-    return this.citizensService.rechargeWallet(id, body.monto, body.referencia);
+    return this.citizensService.rechargeWallet(id, body.monto, body.referencia, body.metodoPago);
   }
 
   @Get(':id/transactions')

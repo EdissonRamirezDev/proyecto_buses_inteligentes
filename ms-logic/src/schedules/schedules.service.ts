@@ -92,7 +92,63 @@ export class SchedulesService {
     }
   }
 
+  private async validateRouteHasMinStops(routeId: string, minStops = 3): Promise<Route> {
+    const route = await this.dataSource.getRepository(Route).findOne({
+      where: { id: routeId },
+      relations: ['nodes'],
+    });
+    if (!route) {
+      throw new NotFoundException('Ruta no encontrada');
+    }
+    if (!route.nodes || route.nodes.length < minStops) {
+      throw new BadRequestException(`La ruta debe tener al menos ${minStops} paraderos para programar un servicio`);
+    }
+    return route;
+  }
+
+  async findActiveByBusId(busId: number): Promise<Schedule | null> {
+    const today = new Date().toISOString().split('T')[0];
+    const schedules = await this.scheduleRepository.find({
+      where: {
+        bus: { id: busId },
+        fecha: today as any,
+        estado: 'programado',
+      },
+      relations: ['route', 'route.nodes', 'route.nodes.busStop', 'bus'],
+      order: { hora_salida: 'ASC' },
+    });
+
+    if (!schedules.length) return null;
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    return (
+      schedules.find((s) => {
+        const [hh, mm] = s.hora_salida.substring(0, 5).split(':').map(Number);
+        const start = hh * 60 + (mm || 0);
+        const duration =
+          s.route?.nodes?.reduce((sum, node) => sum + (node.tiempo_estimado || 0), 0) || 120;
+        const end = start + duration + (s.tolerancia_minutos || 0);
+        return currentMinutes >= start - (s.tolerancia_minutos || 0) && currentMinutes <= end;
+      }) || schedules[0]
+    );
+  }
+
+  async findAvailableForCitizens(): Promise<Schedule[]> {
+    const today = new Date().toISOString().split('T')[0];
+    return this.scheduleRepository.find({
+      where: {
+        fecha: today as any,
+        estado: 'programado',
+      },
+      relations: ['route', 'bus'],
+      order: { hora_salida: 'ASC' },
+    });
+  }
+
   async create(createScheduleDto: CreateScheduleDto): Promise<Schedule> {
+    await this.validateRouteHasMinStops(createScheduleDto.routeId);
     await this.validateSchedule(createScheduleDto);
 
     const schedule = this.scheduleRepository.create({

@@ -32,9 +32,18 @@ export class PersonRelations1779462358201 implements MigrationInterface {
             await queryRunner.query(`ALTER TABLE \`citizens\` ADD CONSTRAINT \`FK_495d85264dc235cadb3a26b9b0f\` FOREIGN KEY (\`person_id\`) REFERENCES \`persons\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`);
         }
 
-        // Constraints for business_administrators
-        await queryRunner.query(`ALTER TABLE \`business_administrators\` ADD CONSTRAINT \`FK_753c1af7dd9cda58115db43a4f7\` FOREIGN KEY (\`person_id\`) REFERENCES \`persons\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE \`business_administrators\` ADD CONSTRAINT \`FK_6713dded60b74ba45c7d4b7a7b8\` FOREIGN KEY (\`company_id\`) REFERENCES \`companies\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`);
+        const baFks: { CONSTRAINT_NAME: string }[] = await queryRunner.query(
+            `SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'business_administrators' AND CONSTRAINT_TYPE = 'FOREIGN KEY'`,
+        );
+        const baFkNames = new Set(baFks.map((fk) => fk.CONSTRAINT_NAME));
+
+        if (!baFkNames.has('FK_753c1af7dd9cda58115db43a4f7')) {
+            await queryRunner.query(`ALTER TABLE \`business_administrators\` ADD CONSTRAINT \`FK_753c1af7dd9cda58115db43a4f7\` FOREIGN KEY (\`person_id\`) REFERENCES \`persons\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`);
+        }
+        if (!baFkNames.has('FK_6713dded60b74ba45c7d4b7a7b8')) {
+            await queryRunner.query(`ALTER TABLE \`business_administrators\` ADD CONSTRAINT \`FK_6713dded60b74ba45c7d4b7a7b8\` FOREIGN KEY (\`company_id\`) REFERENCES \`companies\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`);
+        }
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {

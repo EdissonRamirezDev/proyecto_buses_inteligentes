@@ -17,6 +17,11 @@ export class BusesController {
     return this.busesService.findAll();
   }
 
+  @Get(':id/capacity')
+  getCapacity(@Param('id') id: string) {
+    return this.busesService.syncCapacityFromTickets(+id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.busesService.findOne(+id);

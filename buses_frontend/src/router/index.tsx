@@ -31,6 +31,7 @@ import WalletPage from '../pages/admin/WalletPage'
 import IncidentsPage from '../pages/admin/IncidentsPage'
 import AnalyticsPage from '../pages/admin/AnalyticsPage'
 import CompaniesPage from '../pages/admin/CompaniesPage'
+import CompanyOperationsPage from '../pages/admin/CompanyOperationsPage'
 
 
 // Pages - Citizen
@@ -88,6 +89,7 @@ const AppRouter = () => {
         <Route path="/admin/incidents" element={<IncidentsPage />} />
         <Route path="/admin/analytics" element={<AnalyticsPage />} />
         <Route path="/admin/companies" element={<CompaniesPage />} />
+        <Route path="/admin/companies/operations" element={<CompanyOperationsPage />} />
 
         {/* Rutas de Rol Específico */}
         <Route path="/citizen/dashboard" element={<CitizenDashboard />} />

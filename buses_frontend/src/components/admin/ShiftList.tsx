@@ -56,6 +56,8 @@ const ShiftList = ({ onEdit, refreshTrigger = 0 }: ShiftListProps) => {
     return shifts.filter(
       (s) =>
         s.bus?.placa?.toLowerCase().includes(q) ||
+        s.driver?.person?.name?.toLowerCase().includes(q) ||
+        s.driver?.person?.lastName?.toLowerCase().includes(q) ||
         s.driver?.name?.toLowerCase().includes(q) ||
         s.driver?.last_name?.toLowerCase().includes(q)
     );
@@ -120,7 +122,9 @@ const ShiftList = ({ onEdit, refreshTrigger = 0 }: ShiftListProps) => {
                 <tr key={shift.id} className="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                   <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{shift.bus?.placa || 'N/A'}</td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                    {shift.driver ? `${shift.driver.name} ${shift.driver.last_name}` : 'N/A'}
+                    {shift.driver
+                      ? `${shift.driver.person?.name ?? shift.driver.name ?? ''} ${shift.driver.person?.lastName ?? shift.driver.last_name ?? ''}`.trim() || `Conductor #${shift.driver.id}`
+                      : 'N/A'}
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{formatDate(shift.fecha_inicio)}</td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{formatDate(shift.fecha_fin)}</td>

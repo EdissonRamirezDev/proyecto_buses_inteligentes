@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as companyService from '../../services/companyService';
 import type { Company } from '../../services/companyService';
 import Button from '../../components/common/Button';
@@ -9,6 +10,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 type View = 'list' | 'form';
 
 const CompaniesPage = () => {
+  const navigate = useNavigate();
   const [view, setView] = useState<View>('list');
   const [companies, setCompanies] = useState<Company[]>([]);
   const [companyToEdit, setCompanyToEdit] = useState<Company | null>(null);
@@ -194,6 +196,16 @@ const CompaniesPage = () => {
                           <td className="px-4 py-3 text-gray-500 dark:text-gray-400 truncate max-w-xs">{company.address || '—'}</td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  navigate(`/admin/companies/operations?companyId=${company.id}`)
+                                }
+                                className="text-xs font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 px-2 py-1 rounded border border-emerald-600/30"
+                                title="Asignar buses, conductores y ver turnos"
+                              >
+                                Operar
+                              </button>
                               <button 
                                 onClick={() => handleEdit(company)}
                                 className="p-1.5 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"

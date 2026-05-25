@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateNodeDto } from './dto/create-node.dto';
@@ -13,6 +13,16 @@ export class NodesService {
   ) {}
 
   async create(createNodeDto: CreateNodeDto): Promise<Node> {
+    const duplicate = await this.nodeRepository.findOne({
+      where: {
+        route: { id: createNodeDto.routeId },
+        busStop: { id: createNodeDto.busStopId },
+      },
+    });
+    if (duplicate) {
+      throw new BadRequestException('El paradero ya pertenece a esta ruta');
+    }
+
     const node = this.nodeRepository.create({
       ...createNodeDto,
       route: { id: createNodeDto.routeId },

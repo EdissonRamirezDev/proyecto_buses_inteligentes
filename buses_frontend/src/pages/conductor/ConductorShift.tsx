@@ -1,8 +1,16 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { getDrivers } from '../../services/driverService';
-import { getShifts, updateShift } from '../../services/shiftService';
-import { updateBus } from '../../services/busService';
+import { getShifts, startShift } from '../../services/shiftService';
+import { syncBusCapacity } from '../../services/busService';
+import {
+  findShiftStartableNow,
+  formatShiftWindow,
+  isShiftEnCurso,
+  isShiftProgramado,
+  isShiftWithinWindow,
+  shiftEstadoBase,
+} from '../../utils/shiftUtils';
 import { getIncidents } from '../../services/incidentsService';
 import type { Driver } from '../../types/driver.types';
 import type { Shift } from '../../types/shift.types';
@@ -57,17 +65,15 @@ const ConductorShift = () => {
         const myShifts = allShifts.filter((s) => s.driver?.id === myDriver.id);
         setDriverShifts(myShifts);
         
-        // Find Active Shift
-        const active = myShifts.find((s) => s.estado === 'en_curso' || s.estado === 'ACTIVO');
+        const active = myShifts.find((s) => isShiftEnCurso(s.estado));
         setActiveShift(active || null);
-        
+
         if (active) {
-          setGpsActive(true); // Automatically activate telemetry if shift is already active
+          setGpsActive(true);
         }
-        
-        // Find next Scheduled Shift
-        const scheduled = myShifts.find((s) => s.estado === 'PROGRAMADO' || s.estado === 'programado' || s.estado === 'PENDIENTE');
-        setScheduledShift(scheduled || null);
+
+        const scheduled = findShiftStartableNow(myShifts);
+        setScheduledShift(scheduled);
 
         // Load Incidents
         const allIncidents = await getIncidents();
@@ -169,41 +175,43 @@ const ConductorShift = () => {
 
   // Start Shift Handler
   const handleConfirmStartShift = async () => {
-    const targetShift = scheduledShift || activeShift; // Fallback
+    const targetShift = scheduledShift;
     if (!targetShift?.id || !targetShift?.bus?.id) {
-      showToast('No hay turnos disponibles para iniciar.');
+      showToast('No hay un turno programado para la fecha y hora actual.');
+      return;
+    }
+
+    if (!isShiftProgramado(targetShift.estado) || !isShiftWithinWindow(targetShift)) {
+      showToast('Este turno no está dentro de su ventana programada. Verifica el horario con operaciones.');
+      return;
+    }
+
+    if (busStatus === 'obs' && !busObservations.trim()) {
+      showToast('Registra el detalle de las observaciones del bus.');
       return;
     }
 
     setIsStartingShift(true);
     try {
-      // 1. Update Shift state to 'en_curso' and start date
-      await updateShift(targetShift.id, {
-        estado: 'en_curso',
-        fecha_inicio: new Date().toISOString(),
+      const result = await startShift(targetShift.id, {
+        busStatus,
+        observations: busStatus === 'obs' ? busObservations.trim() : undefined,
+        driverEmail: user?.email,
       });
 
-      // 2. Update Bus condition and observations in Backend
-      let newBusEstado = 'Operativo';
-      if (busStatus === 'obs') {
-        newBusEstado = `Operativo con observaciones: ${busObservations}`;
-      } else if (busStatus === 'rev') {
-        newBusEstado = 'Requiere revisión antes de salir';
-      }
-
-      await updateBus(targetShift.bus.id, {
-        estado: newBusEstado,
-      });
-
-      showToast('¡Turno iniciado correctamente! Telemetría GPS activada.');
+      showToast(result.mensaje || '¡Turno iniciado correctamente! Telemetría GPS activada.');
       setShowStartModal(false);
-      
-      // Reload Data
+      setBusStatus('ok');
+      setBusObservations('');
+
       await loadData();
       setGpsActive(true);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error starting shift:', err);
-      showToast('Error al iniciar el turno. Intenta nuevamente.');
+      const msg =
+        (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+      const text = Array.isArray(msg) ? msg.join('. ') : msg;
+      showToast(text || 'Error al iniciar el turno. Intenta nuevamente.');
     } finally {
       setIsStartingShift(false);
     }
@@ -220,8 +228,14 @@ const ConductorShift = () => {
     ? `${driverName[0]}${driverLastName[0]}`.toUpperCase()
     : user?.email ? user.email.slice(0, 2).toUpperCase() : 'C';
 
-  const completedShifts = driverShifts.filter((s) => s.estado === 'completado' || s.estado === 'COMPLETADO' || s.estado === 'finalizado').length;
+  const completedShifts = driverShifts.filter((s) => {
+    const base = shiftEstadoBase(s.estado);
+    return base === 'completado' || base === 'finalizado';
+  }).length;
   const incidentCount = incidents.length;
+  const programadoFueraDeVentana = driverShifts.some(
+    (s) => isShiftProgramado(s.estado) && !isShiftWithinWindow(s) && !activeShift,
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
@@ -361,6 +375,21 @@ const ConductorShift = () => {
                   <h1 className="text-2xl font-bold text-slate-900 dark:text-white">¡Buen día, {driver?.person?.name || driver?.name || 'Conductor'}!</h1>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Resumen y estado de tu jornada laboral hoy.</p>
                 </div>
+                {(activeShift || scheduledShift)?.bus?.id && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const busId = (activeShift || scheduledShift)?.bus?.id;
+                      if (!busId) return;
+                      await syncBusCapacity(busId);
+                      await loadData();
+                      setToastMessage('Ocupación del bus actualizada');
+                    }}
+                    className="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    Actualizar ocupación
+                  </button>
+                )}
               </div>
 
               {/* Active Shift Active Banner */}
@@ -374,7 +403,15 @@ const ConductorShift = () => {
                     <div>
                       <h3 className="font-bold text-sm text-emerald-900 dark:text-emerald-300">Turno en curso y activo</h3>
                       <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80 font-mono mt-0.5">
-                        Bus: {activeShift.bus?.placa} · Inicio: {activeShift.fecha_inicio ? new Date(activeShift.fecha_inicio).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '--:--'} · Tracking GPS Activo
+                        Bus: {activeShift.bus?.placa} · Inicio real:{' '}
+                        {activeShift.hora_inicio_real
+                          ? new Date(activeShift.hora_inicio_real).toLocaleString('es-CO', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                            })
+                          : '--:--'}{' '}
+                        · Ventana: {formatShiftWindow(activeShift)} · GPS activo
                       </p>
                     </div>
                   </div>
@@ -440,17 +477,27 @@ const ConductorShift = () => {
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-slate-400 dark:text-slate-500">Capacidad</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500">Capacidad del bus</p>
                           <p className="text-sm font-bold text-slate-900 dark:text-white mt-1">
-                            {(scheduledShift || activeShift)?.bus?.capacidad || '0'} pas.
+                            {(() => {
+                              const bus = (scheduledShift || activeShift)?.bus;
+                              const max = bus?.capacidad_max ?? bus?.capacidad ?? 0;
+                              const libres = bus?.capacidad_disponible ?? bus?.capacidad ?? max;
+                              const ocupados = bus?.capacidad_ocupados ?? Math.max(0, max - libres);
+                              return `${libres} libres · ${ocupados}/${max} abordados`;
+                            })()}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">Horario Estimado</p>
+                          <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">Horario programado</p>
                           <p className="text-sm font-bold text-slate-900 dark:text-white mt-1">
-                            {(scheduledShift || activeShift)?.fecha_inicio ? new Date((scheduledShift || activeShift)!.fecha_inicio!).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '08:00'} - 
-                            {(scheduledShift || activeShift)?.fecha_fin ? new Date((scheduledShift || activeShift)!.fecha_fin!).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '16:00'}
+                            {formatShiftWindow((scheduledShift || activeShift)!)}
                           </p>
+                          {activeShift?.hora_inicio_real && (
+                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-mono">
+                              Inicio real: {new Date(activeShift.hora_inicio_real).toLocaleString('es-CO')}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <p className="text-xs text-slate-400 dark:text-slate-500">Estado</p>
@@ -464,7 +511,11 @@ const ConductorShift = () => {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">No tienes programaciones agendadas para el día de hoy.</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                        {programadoFueraDeVentana
+                          ? 'Tienes turno programado, pero aún no está dentro de la fecha/hora de inicio (o ya finalizó la ventana).'
+                          : 'No tienes turnos programados para la fecha y hora actual.'}
+                      </p>
                     )}
                   </div>
 
@@ -568,13 +619,13 @@ const ConductorShift = () => {
                                 </div>
                               </div>
                               <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold font-mono ${
-                                s.estado === 'en_curso' || s.estado === 'ACTIVO'
+                                isShiftEnCurso(s.estado)
                                   ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400' 
-                                  : s.estado === 'completado' || s.estado === 'COMPLETADO' || s.estado === 'finalizado'
+                                  : shiftEstadoBase(s.estado) === 'completado' || shiftEstadoBase(s.estado) === 'finalizado'
                                   ? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
                                   : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400'
                               }`}>
-                                {s.estado?.toUpperCase()}
+                                {shiftEstadoBase(s.estado).toUpperCase() || '—'}
                               </span>
                             </div>
                           );
@@ -613,7 +664,7 @@ const ConductorShift = () => {
                     {scheduledShift ? (
                       <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60 font-mono text-xs">
                         <p className="font-bold text-slate-900 dark:text-white">Bus: {scheduledShift.bus?.placa}</p>
-                        <p className="text-slate-500 dark:text-slate-400 mt-1">Horario programado: 8h estándar</p>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1">{formatShiftWindow(scheduledShift)}</p>
                       </div>
                     ) : (
                       <p className="text-xs text-slate-400 dark:text-slate-500">No hay programaciones futuras agendadas.</p>
@@ -687,7 +738,7 @@ const ConductorShift = () => {
       </div>
 
       {/* ── MODAL: INICIAR TURNO ── */}
-      {showStartModal && (scheduledShift || activeShift) && (
+      {showStartModal && scheduledShift && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 transition-all animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl transition-all scale-100 animate-in zoom-in-95 duration-200">
             
@@ -714,11 +765,15 @@ const ConductorShift = () => {
             <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800/60 text-xs space-y-2 mb-4 font-mono">
               <div className="flex justify-between">
                 <span className="text-slate-500 dark:text-slate-400">Bus Asignado:</span>
-                <span className="font-bold text-slate-900 dark:text-white">{(scheduledShift || activeShift)?.bus?.placa}</span>
+                <span className="font-bold text-slate-900 dark:text-white">{scheduledShift.bus?.placa}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Ventana programada:</span>
+                <span className="font-bold text-slate-900 dark:text-white text-right max-w-[55%]">{formatShiftWindow(scheduledShift)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500 dark:text-slate-400">Modelo:</span>
-                <span className="font-bold text-slate-900 dark:text-white">{(scheduledShift || activeShift)?.bus?.modelo}</span>
+                <span className="font-bold text-slate-900 dark:text-white">{scheduledShift.bus?.modelo}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500 dark:text-slate-400">Empresa:</span>

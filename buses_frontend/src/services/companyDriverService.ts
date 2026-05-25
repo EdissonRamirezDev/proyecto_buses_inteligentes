@@ -1,4 +1,5 @@
 import { httpBusiness } from './http';
+import { mapCompanyDriverFromApi } from '../utils/driverUtils';
 
 export interface CompanyDriver {
   id?: number;
@@ -20,7 +21,7 @@ export interface CompanyDriver {
 
 export const getCompanyDrivers = async (): Promise<CompanyDriver[]> => {
   const response = await httpBusiness.get<CompanyDriver[]>('/company-drivers');
-  return response.data;
+  return response.data.map(mapCompanyDriverFromApi);
 };
 
 export const createCompanyDriver = async (data: { companyId: number; driverId: number; status?: 'ACTIVE' | 'INACTIVE' }): Promise<CompanyDriver> => {

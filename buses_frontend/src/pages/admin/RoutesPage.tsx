@@ -128,6 +128,13 @@ const RoutesPage = () => {
       }
     }
 
+    if (currentNodes.length + 1 < 3) {
+      const proceed = window.confirm(
+        `La ruta tendrá ${currentNodes.length + 1} paradero(s). Se requieren al menos 3 para programar servicios. ¿Agregar de todos modos?`,
+      );
+      if (!proceed) return;
+    }
+
     try {
       await createNode({
         routeId: selectedRouteId,

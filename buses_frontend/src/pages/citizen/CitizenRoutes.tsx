@@ -119,6 +119,8 @@ const CitizenRoutes = () => {
   const countdownRef = useRef<any>(null);
 
   const watchIdRef = useRef<number | null>(null);
+  const lastNearbyCalcRef = useRef<{ lat: number; lng: number } | null>(null);
+  const SIGNIFICANT_MOVEMENT_M = 75;
 
   useEffect(() => {
     watchIdRef.current = watchId;
@@ -272,17 +274,18 @@ const CitizenRoutes = () => {
       navigator.geolocation.clearWatch(watchId);
       setWatchId(null);
     }
-    setUserLocation({
-      lat: latlng.lat,
-      lng: latlng.lng
-    });
+    const loc = { lat: latlng.lat, lng: latlng.lng };
+    setUserLocation(loc);
+    lastNearbyCalcRef.current = null;
+    recalcNearbyStops(loc);
     setLocationError(null);
     setIsLocating(false);
   };
 
-  useEffect(() => {
-    if (userLocation && routes.length > 0) {
-      const uniqueStopsMap = new Map();
+  const recalcNearbyStops = (location: { lat: number; lng: number }) => {
+    if (routes.length === 0) return;
+
+    const uniqueStopsMap = new Map();
       
       routes.forEach((route: any) => {
         if (route.nodes) {
@@ -307,9 +310,9 @@ const CitizenRoutes = () => {
 
       const stopsWithDistance = Array.from(uniqueStopsMap.values()).map(stop => {
         const distance = calculateDistance(
-          userLocation.lat, 
-          userLocation.lng, 
-          Number(stop.latitud), 
+          location.lat,
+          location.lng,
+          Number(stop.latitud),
           Number(stop.longitud)
         );
         return { ...stop, distance };
@@ -317,6 +320,21 @@ const CitizenRoutes = () => {
 
       stopsWithDistance.sort((a, b) => a.distance - b.distance);
       setNearbyStops(stopsWithDistance.slice(0, 5));
+      lastNearbyCalcRef.current = location;
+  };
+
+  useEffect(() => {
+    if (!userLocation || routes.length === 0) return;
+
+    const last = lastNearbyCalcRef.current;
+    if (!last) {
+      recalcNearbyStops(userLocation);
+      return;
+    }
+
+    const moved = calculateDistance(last.lat, last.lng, userLocation.lat, userLocation.lng);
+    if (moved >= SIGNIFICANT_MOVEMENT_M) {
+      recalcNearbyStops(userLocation);
     }
   }, [userLocation, routes]);
 
@@ -468,10 +486,7 @@ const CitizenRoutes = () => {
   const filteredRoutes = routes.filter(route => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
-    if (route.nombre.toLowerCase().includes(q)) return true;
-    if ((route as any).descripcion?.toLowerCase().includes(q)) return true;
-    const nodes = (route as any).nodes || [];
-    return nodes.some((n: any) => n.busStop?.nombre.toLowerCase().includes(q));
+    return route.nombre.toLowerCase().includes(q);
   });
 
   return (
