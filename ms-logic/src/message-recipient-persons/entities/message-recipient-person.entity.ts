@@ -1,17 +1,19 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Message } from './message.entity';
+import { Message } from '../../messages/entities/message.entity';
+import { Person } from '../../persons/entities/person.entity';
 
 @Entity('message_recipient_persons')
 export class MessageRecipientPerson {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Message, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Message, m => m.destinatarios_personas, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'message_id' })
   message: Message;
 
-  @Column()
-  destinatario_id: string; // userId from ms-security
+  @ManyToOne(() => Person, p => p.mensajesRecibidos, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'destinatario_id', referencedColumnName: 'userId' })
+  persona: Person;
 
   @Column({ default: false })
   leido: boolean;
