@@ -32,7 +32,9 @@ import IncidentsPage from '../pages/admin/IncidentsPage'
 import AnalyticsPage from '../pages/admin/AnalyticsPage'
 import CompaniesPage from '../pages/admin/CompaniesPage'
 import CompanyOperationsPage from '../pages/admin/CompanyOperationsPage'
-
+import LiveFleetDashboard from '../pages/admin/LiveFleetDashboard'
+import MessagesPage from '../pages/admin/MessagesPage'
+import MassAlertsPage from '../pages/admin/MassAlertsPage'
 
 // Pages - Citizen
 import CitizenDashboard from '../pages/citizen/CitizenDashboard'
@@ -90,6 +92,11 @@ const AppRouter = () => {
         <Route path="/admin/analytics" element={<AnalyticsPage />} />
         <Route path="/admin/companies" element={<CompaniesPage />} />
         <Route path="/admin/companies/operations" element={<CompanyOperationsPage />} />
+        <Route path="/admin/live-fleet" element={<LiveFleetDashboard />} />
+
+        {/* Entregable 3 - Mensajería (todos los roles) */}
+        <Route path="/messages" element={<MessagesPage />} />
+        <Route path="/admin/mass-alerts" element={<MassAlertsPage />} />
 
         {/* Rutas de Rol Específico */}
         <Route path="/citizen/dashboard" element={<CitizenDashboard />} />

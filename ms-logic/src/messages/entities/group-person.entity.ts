@@ -12,4 +12,7 @@ export class GroupPerson {
 
   @Column()
   person_id: string; // userId from ms-security
+
+  @Column({ default: false })
+  is_admin: boolean;
 }

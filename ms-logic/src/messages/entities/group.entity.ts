@@ -13,4 +13,10 @@ export class Group {
 
   @CreateDateColumn()
   fecha_creacion: Date;
+
+  @Column({ default: false })
+  is_public: boolean;
+
+  @Column({ nullable: true })
+  icon: string;
 }

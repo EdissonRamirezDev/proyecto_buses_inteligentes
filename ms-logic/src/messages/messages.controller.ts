@@ -1,12 +1,98 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { CreateMessageDto } from './dto/create-message.dto';
+import { CreateMassAlertDto } from './dto/create-mass-alert.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
+import { CreateGroupDto } from './dto/create-group.dto';
+import { AddMemberDto } from './dto/add-member.dto';
+import { UserIdDto } from './dto/user-id.dto';
 
 @Controller('messages')
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
+  // ── Mensajes ──
+
+  @Post('send')
+  sendDirect(@Body() createMessageDto: CreateMessageDto) {
+    return this.messagesService.sendMessage(createMessageDto);
+  }
+
+  @Get('search-persons')
+  searchPersons(@Query('q') query: string) {
+    return this.messagesService.searchPersons(query);
+  }
+
+  @Get('inbox/:userId')
+  getInbox(@Param('userId') userId: string) {
+    return this.messagesService.getInbox(userId);
+  }
+
+  @Get('sent/:userId')
+  getSent(@Param('userId') userId: string) {
+    return this.messagesService.getSent(userId);
+  }
+
+  @Patch(':id/read')
+  markAsRead(@Param('id') id: string, @Body() body: UserIdDto) {
+    return this.messagesService.markAsRead(id, body.userId);
+  }
+
+  @Delete('delete/:id')
+  deleteMessage(@Param('id') id: string, @Body() body: UserIdDto) {
+    return this.messagesService.deleteMessage(id, body.userId);
+  }
+
+  // ── Alertas Masivas ──
+
+  @Post('mass-alerts/calculate')
+  calculateMassAlertRecipients(@Body() body: { scope: 'ALL' | 'ROUTE' | 'ZONE', scopeValue?: string, emisorId?: string }) {
+    return this.messagesService.calculateMassAlertRecipients(body.scope, body.scopeValue, body.emisorId);
+  }
+
+  @Post('mass-alerts')
+  sendMassAlert(@Body() dto: CreateMassAlertDto) {
+    return this.messagesService.sendMassAlert(dto);
+  }
+
+  @Get('mass-alerts/stats/:userId')
+  getMassAlertStats(@Param('userId') userId: string) {
+    return this.messagesService.getMassAlertStats(userId);
+  }
+
+  // ── Grupos ──
+
+  @Post('groups')
+  createGroup(@Body() body: CreateGroupDto) {
+    return this.messagesService.createGroup(
+      body.userId,
+      body.nombre,
+      body.descripcion,
+      body.isPublic,
+      body.icon,
+      body.memberIds
+    );
+  }
+
+  @Get('groups/my-groups/:userId')
+  getMyGroups(@Param('userId') userId: string) {
+    return this.messagesService.getMyGroups(userId);
+  }
+
+  @Post('groups/:groupId/members')
+  addMemberToGroup(
+    @Param('groupId') groupId: string,
+    @Body() body: AddMemberDto
+  ) {
+    return this.messagesService.addMemberToGroup(groupId, body.adminId, body.personId);
+  }
+
+  @Get('groups/:groupId/members')
+  getGroupMembers(@Param('groupId') groupId: string) {
+    return this.messagesService.getGroupMembers(groupId);
+  }
+
+  // ── CRUD genérico original ──
   @Post()
   create(@Body() createMessageDto: CreateMessageDto) {
     return this.messagesService.create(createMessageDto);
@@ -19,7 +105,7 @@ export class MessagesController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.messagesService.findOne(+id);
+    return this.messagesService.findOne(id);
   }
 
   @Patch(':id')
@@ -29,6 +115,6 @@ export class MessagesController {
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.messagesService.remove(+id);
+    return this.messagesService.remove(id);
   }
 }

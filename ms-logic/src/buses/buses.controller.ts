@@ -17,6 +17,11 @@ export class BusesController {
     return this.busesService.findAll();
   }
 
+  @Get('fleet/live')
+  getLiveFleetStatus() {
+    return this.busesService.getLiveFleetStatus();
+  }
+
   @Get(':id/capacity')
   getCapacity(@Param('id') id: string) {
     return this.busesService.syncCapacityFromTickets(+id);

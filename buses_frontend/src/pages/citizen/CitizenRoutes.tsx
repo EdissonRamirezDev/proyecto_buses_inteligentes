@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { getRoutes } from '../../services/routesService';
+import { getActiveBuses } from '../../services/trackingService';
+import type { ActiveBus } from '../../services/trackingService';
 import type { Route } from '../../types/route.types';
 import Button from '../../components/common/Button';
 import { useNavigate } from 'react-router-dom';
@@ -118,6 +120,10 @@ const CitizenRoutes = () => {
   const simIntervalRef = useRef<any>(null);
   const countdownRef = useRef<any>(null);
 
+  // Tracking real
+  const [activeBuses, setActiveBuses] = useState<ActiveBus[]>([]);
+  const [activeBusesEta, setActiveBusesEta] = useState<{ [busId: number]: { nearestStop: any, etaMins: number, isDelayed: boolean } }>({});
+
   const watchIdRef = useRef<number | null>(null);
   const lastNearbyCalcRef = useRef<{ lat: number; lng: number } | null>(null);
   const SIGNIFICANT_MOVEMENT_M = 75;
@@ -207,6 +213,90 @@ const CitizenRoutes = () => {
       setRouteDuration(null);
     }
   }, [selectedRoute]);
+
+  // Polling de buses reales cada 10s
+  useEffect(() => {
+    let interval: any;
+    if (selectedRoute) {
+      const fetchBuses = async () => {
+        try {
+          const buses = await getActiveBuses(selectedRoute.id);
+          setActiveBuses(buses);
+          
+          const newEtas: any = {};
+          const now = new Date();
+          const routeNodes = getRouteNodes(selectedRoute).filter((n: any) => n.busStop);
+          
+          buses.forEach(bus => {
+            let nearestStop = null;
+            let minDistance = Infinity;
+            let nearestNodeIdx = -1;
+            
+            routeNodes.forEach((node: any, idx: number) => {
+              if (node.busStop && node.busStop.latitud && node.busStop.longitud) {
+                const dist = calculateDistance(bus.latitude, bus.longitude, Number(node.busStop.latitud), Number(node.busStop.longitud));
+                if (dist < minDistance) {
+                  minDistance = dist;
+                  nearestStop = node.busStop;
+                  nearestNodeIdx = idx;
+                }
+              }
+            });
+            
+            let etaMins = 0;
+            if (userLocation && nearestNodeIdx !== -1) {
+              let userNearestNodeIdx = -1;
+              let userMinDist = Infinity;
+              routeNodes.forEach((node: any, idx: number) => {
+                const dist = calculateDistance(userLocation.lat, userLocation.lng, Number(node.busStop.latitud), Number(node.busStop.longitud));
+                if (dist < userMinDist) {
+                  userMinDist = dist;
+                  userNearestNodeIdx = idx;
+                }
+              });
+              
+              if (userNearestNodeIdx > nearestNodeIdx) {
+                for(let i = nearestNodeIdx + 1; i <= userNearestNodeIdx; i++) {
+                  etaMins += routeNodes[i].tiempo_estimado || 2; 
+                }
+              } else {
+                etaMins = -1;
+              }
+            } else {
+              etaMins = routeNodes[nearestNodeIdx + 1]?.tiempo_estimado || 2;
+            }
+            
+            let isDelayed = false;
+            if (bus.hora_salida) {
+              const [hours, mins, secs] = bus.hora_salida.split(':').map(Number);
+              const scheduleDate = new Date();
+              scheduleDate.setHours(hours, mins, secs || 0, 0);
+              
+              const diffMinutes = (now.getTime() - scheduleDate.getTime()) / 60000;
+              // Para propósitos del demo, consideramos retraso si pasó el tiempo de tolerancia
+              if (diffMinutes > bus.tolerancia_minutos) { 
+                 isDelayed = true;
+              }
+            }
+            
+            newEtas[bus.busId] = { nearestStop, etaMins, isDelayed };
+          });
+          
+          setActiveBusesEta(newEtas);
+        } catch (error) {
+          console.error("Failed to fetch active buses", error);
+        }
+      };
+      
+      fetchBuses();
+      interval = setInterval(fetchBuses, 10000);
+    } else {
+      setActiveBuses([]);
+      setActiveBusesEta({});
+    }
+    
+    return () => clearInterval(interval);
+  }, [selectedRoute, userLocation]);
 
   const startWatching = (highAccuracy: boolean) => {
     const id = navigator.geolocation.watchPosition(
@@ -704,6 +794,40 @@ const CitizenRoutes = () => {
                 )}
               </div>
             </div>
+
+            {/* Panel de Monitoreo */}
+            {selectedRoute && activeBuses.length > 0 && (
+              <div className="bg-slate-800 rounded-2xl border border-indigo-500/50 p-5 shadow-lg flex flex-col mt-6 shadow-indigo-500/10 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+                <h2 className="text-lg font-bold text-indigo-300 mb-3 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                  Buses en Vivo ({activeBuses.length})
+                </h2>
+                <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar max-h-[300px]">
+                  {activeBuses.map(bus => {
+                    const info = activeBusesEta[bus.busId];
+                    return (
+                      <div key={bus.busId} className={`p-3 rounded-xl border ${info?.isDelayed ? 'bg-rose-900/20 border-rose-500/50' : 'bg-slate-700/40 border-slate-600/50'} flex justify-between items-center`}>
+                        <div>
+                          <div className="font-bold text-sm text-slate-200">🚌 {bus.placa}</div>
+                          <div className="text-xs text-slate-400 mt-1">Cerca de: <span className="text-indigo-300">{info?.nearestStop?.nombre || 'Desconocido'}</span></div>
+                        </div>
+                        <div className="text-right">
+                          {info?.isDelayed && <div className="text-[10px] text-rose-400 font-bold bg-rose-500/10 px-2 py-0.5 rounded mb-1 inline-block">⚠️ Retrasado</div>}
+                          {info?.etaMins > 0 ? (
+                            <div className="text-xs text-emerald-400 font-bold">Llega en ~{info.etaMins} min</div>
+                          ) : info?.etaMins === -1 ? (
+                            <div className="text-[10px] text-slate-500">Ya pasó</div>
+                          ) : (
+                            <div className="text-[10px] text-slate-500">En ruta</div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Mapa */}
@@ -765,6 +889,35 @@ const CitizenRoutes = () => {
                     </Popup>
                   </Marker>
                 )
+              ))}
+
+              {/* Render active buses */}
+              {activeBuses.map(bus => (
+                <Marker 
+                  key={`bus-${bus.busId}`}
+                  position={[bus.latitude, bus.longitude]}
+                  icon={L.divIcon({
+                    className: 'real-bus-icon',
+                    html: `<div class="bus-marker-real ${activeBusesEta[bus.busId]?.isDelayed ? 'delayed' : ''}">🚌<span class="placa">${bus.placa}</span></div>`,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20]
+                  })}
+                >
+                  <Popup>
+                    <div className="text-center font-bold">
+                      <div className="text-sm text-indigo-600 mb-1">Bus {bus.placa}</div>
+                      <div className="text-xs text-slate-600">Paradero cercano: {activeBusesEta[bus.busId]?.nearestStop?.nombre || 'N/A'}</div>
+                      {activeBusesEta[bus.busId]?.etaMins > 0 ? (
+                        <div className="text-xs text-emerald-600 font-bold mt-1">Llega en ~{activeBusesEta[bus.busId]?.etaMins} min</div>
+                      ) : activeBusesEta[bus.busId]?.etaMins === -1 ? (
+                         <div className="text-xs text-slate-500 font-bold mt-1">El bus ya pasó o va en otro sentido</div>
+                      ) : null}
+                      {activeBusesEta[bus.busId]?.isDelayed && (
+                        <div className="text-xs text-rose-600 font-bold mt-1 bg-rose-100 px-2 py-1 rounded">⚠️ Bus retrasado</div>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
               ))}
 
               {/* Bus simulado moviéndose */}
@@ -836,6 +989,31 @@ const CitizenRoutes = () => {
               @keyframes busFloat {
                 0% { transform: translateY(0px); }
                 100% { transform: translateY(-4px); }
+              }
+              .real-bus-icon {
+                background: none !important;
+                border: none !important;
+              }
+              .bus-marker-real {
+                font-size: 24px;
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+              }
+              .bus-marker-real.delayed {
+                filter: drop-shadow(0 0 8px rgba(225,29,72,0.8));
+              }
+              .bus-marker-real .placa {
+                font-size: 9px;
+                background: white;
+                color: black;
+                font-weight: bold;
+                padding: 1px 4px;
+                border-radius: 4px;
+                border: 1px solid #333;
+                margin-top: -4px;
               }
               .custom-scrollbar::-webkit-scrollbar {
                 width: 6px;

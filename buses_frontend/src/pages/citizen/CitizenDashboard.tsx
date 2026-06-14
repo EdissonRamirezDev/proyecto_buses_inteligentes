@@ -4,6 +4,7 @@ import { createCitizen, findCitizenByUserId } from '../../services/citizensServi
 import { getTransactions } from '../../services/walletService';
 import type { WalletTransaction } from '../../services/walletService';
 import { getTickets, getActiveTicketsForCitizen, getTripDetails } from '../../services/ticketsService';
+import { getInbox } from '../../services/messageService';
 import CitizenTripValidation from '../../components/citizen/CitizenTripValidation';
 import type { Citizen } from '../../types/citizen.types';
 import type { Ticket, TripDetails } from '../../types/ticket.types';
@@ -35,6 +36,7 @@ const CitizenDashboard = () => {
   const [mapLoading, setMapLoading] = useState(false);
   const [tripToast, setTripToast] = useState('');
   const [activeTripTickets, setActiveTripTickets] = useState<Ticket[]>([]);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   const reloadCitizenData = async (citizenId: string) => {
     const [txs, tkts, active] = await Promise.all([
@@ -119,6 +121,12 @@ const CitizenDashboard = () => {
   useEffect(() => {
     const load = async () => {
       try {
+        if (user?.id) {
+          getInbox(user.id).then(inbox => {
+            setUnreadMessages(inbox.filter(m => !m.leido).length);
+          }).catch(console.error);
+        }
+
         // Buscar el perfil citizen vinculado a este userId
         const myCitizen = user?.id ? await findCitizenByUserId(user.id) : undefined;
         
@@ -301,7 +309,7 @@ const CitizenDashboard = () => {
         </div>
 
         {/* Accesos rápidos */}
-        <div className="mt-8 mb-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="mt-8 mb-8 grid grid-cols-2 md:grid-cols-5 gap-4">
           <button onClick={() => navigate('/citizen/routes')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-4 text-center transition">
             <span className="text-2xl">🗺️</span>
             <p className="text-sm text-slate-300 mt-2">Ver Rutas</p>
@@ -313,6 +321,17 @@ const CitizenDashboard = () => {
           <button onClick={() => navigate('/citizen/wallet')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-4 text-center transition">
             <span className="text-2xl">💳</span>
             <p className="text-sm text-slate-300 mt-2">Recargar</p>
+          </button>
+          <button onClick={() => navigate('/messages')} className="bg-slate-800 hover:bg-slate-700 border border-indigo-600/50 rounded-xl p-4 text-center transition flex flex-col items-center justify-center">
+            <div className="relative inline-block">
+              <span className="text-2xl">✉️</span>
+              {unreadMessages > 0 && (
+                <span className="absolute -top-2 -right-3 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-slate-800">
+                  {unreadMessages > 99 ? '99+' : unreadMessages}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-slate-300 mt-2">Mensajes</p>
           </button>
           <button onClick={() => navigate('/profile')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-4 text-center transition">
             <span className="text-2xl">👤</span>
