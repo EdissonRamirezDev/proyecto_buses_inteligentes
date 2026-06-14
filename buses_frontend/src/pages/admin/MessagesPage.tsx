@@ -14,12 +14,21 @@ import {
   getMyGroups,
   createGroup,
   addMemberToGroup,
+  getPublicGroups,
+  joinPublicGroup,
+  promoteGroupMember,
+  removeGroupMember,
+  blockGroupMember,
+  getGroupMembers,
+  leaveGroup,
+  getGroupLogs,
 } from '../../services/messageService';
 import type {
   InboxMessage,
   SentMessage,
   MessagePerson,
   Group,
+  GroupLog,
 } from '../../services/messageService';
 
 const EMOJI_OPTIONS = ['👥', '🚌', '🏙️', '⚽', '🎓', '🚑', '🚨', '🎉', '💼', '🏡'];
@@ -30,10 +39,11 @@ const MessagesPage = () => {
   const { triggerRefresh } = useSocket();
   const currentUserId = user?.id || '';
 
-  const [tab, setTab] = useState<'inbox' | 'sent' | 'compose' | 'groups'>('inbox');
+  const [tab, setTab] = useState<'inbox' | 'sent' | 'compose' | 'groups' | 'public_groups'>('inbox');
   const [inbox, setInbox] = useState<InboxMessage[]>([]);
   const [sent, setSent] = useState<SentMessage[]>([]);
   const [myGroups, setMyGroups] = useState<Group[]>([]);
+  const [publicGroups, setPublicGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -57,6 +67,16 @@ const MessagesPage = () => {
   const [newGroupMembers, setNewGroupMembers] = useState<MessagePerson[]>([]);
   const [creatingGroup, setCreatingGroup] = useState(false);
 
+  const [publicGroupSearchTerm, setPublicGroupSearchTerm] = useState('');
+
+  // Admin Modal State
+  const [adminModalGroup, setAdminModalGroup] = useState<Group | null>(null);
+  const [adminModalTab, setAdminModalTab] = useState<'members' | 'logs'>('members');
+  const [adminMembers, setAdminMembers] = useState<MessagePerson[]>([]);
+  const [adminLogs, setAdminLogs] = useState<GroupLog[]>([]);
+  const [adminMemberSearch, setAdminMemberSearch] = useState('');
+  const [loadingAdmin, setLoadingAdmin] = useState(false);
+
   const [toast, setToast] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const searchTimeout = useRef<any>(null);
@@ -69,10 +89,11 @@ const MessagesPage = () => {
   const fetchData = async () => {
     if (!currentUserId) return;
     try {
-      const [inboxData, sentData, groupsData] = await Promise.all([
+      const [inboxData, sentData, groupsData, publicGroupsData] = await Promise.all([
         getInbox(currentUserId),
         getSent(currentUserId),
         getMyGroups(currentUserId),
+        getPublicGroups(currentUserId),
       ]);
       if (prevInboxCount.current > 0 && inboxData.length > prevInboxCount.current) {
         const newCount = inboxData.length - prevInboxCount.current;
@@ -82,6 +103,7 @@ const MessagesPage = () => {
       setInbox(inboxData);
       setSent(sentData);
       setMyGroups(groupsData);
+      setPublicGroups(publicGroupsData);
     } catch (err) {
       console.error('Error fetching messages', err);
     } finally {
@@ -177,22 +199,23 @@ const MessagesPage = () => {
   };
 
   const handleCreateGroup = async () => {
-    if (!newGroupName.trim()) return;
-    if (newGroupMembers.length < 2) {
-      showToast('⚠️ Debes añadir al menos 2 miembros adicionales al grupo');
-      return;
-    }
+    if (!newGroupName.trim() || newGroupMembers.length < 2) return;
     setCreatingGroup(true);
     try {
-      const memberIds = newGroupMembers.map(m => m.userId);
-      await createGroup(currentUserId, newGroupName.trim(), newGroupDesc.trim(), newGroupPublic, newGroupIcon, memberIds);
-      showToast('✅ Grupo creado correctamente y miembros notificados');
+      await createGroup(
+        currentUserId,
+        newGroupName.trim(),
+        newGroupDesc.trim(),
+        newGroupPublic,
+        newGroupIcon,
+        [...newGroupMembers.map(m => m.userId), currentUserId]
+      );
+      showToast('✅ Grupo creado exitosamente');
       setNewGroupName('');
       setNewGroupDesc('');
+      setNewGroupMembers([]);
       setNewGroupPublic(false);
       setNewGroupIcon('👥');
-      setNewGroupMembers([]);
-      setSearchQuery('');
       await fetchData();
     } catch (err: any) {
       showToast(err.response?.data?.message || '❌ Error al crear grupo');
@@ -206,10 +229,20 @@ const MessagesPage = () => {
       await addMemberToGroup(groupId, currentUserId, personId);
       showToast('✅ Miembro añadido al grupo');
       setSearchQuery('');
-      setSearchResults([]);
+      setExpandedId(null);
       await fetchData();
     } catch (err: any) {
       showToast(err.response?.data?.message || '❌ Error al añadir miembro');
+    }
+  };
+
+  const handleJoinPublicGroup = async (groupId: string) => {
+    try {
+      await joinPublicGroup(groupId, currentUserId);
+      showToast('✅ Te has unido al grupo exitosamente');
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.response?.data?.message || '❌ Error al unirse al grupo');
     }
   };
 
@@ -222,10 +255,79 @@ const MessagesPage = () => {
       (pos) => {
         setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setAttachLocation(true);
-        showToast('📍 Ubicación adjuntada');
+        showToast('📍 Ubicación obtenida correctamente');
       },
-      () => showToast('No se pudo obtener ubicación'),
+      () => showToast('No se pudo obtener tu ubicación')
     );
+  };
+
+  const openAdminModal = async (group: Group) => {
+    setAdminModalGroup(group);
+    setAdminModalTab('members');
+    setAdminMemberSearch('');
+    await loadAdminData(group.id);
+  };
+
+  const loadAdminData = async (groupId: string) => {
+    setLoadingAdmin(true);
+    try {
+      const [m, l] = await Promise.all([
+        getGroupMembers(groupId),
+        getGroupLogs(groupId, currentUserId)
+      ]);
+      setAdminMembers(m);
+      setAdminLogs(l);
+    } catch (err: any) {
+      showToast(err.response?.data?.message || 'Error cargando datos del grupo');
+    } finally {
+      setLoadingAdmin(false);
+    }
+  };
+
+  const handlePromote = async (personId: string) => {
+    if (!adminModalGroup || !window.confirm('¿Seguro que deseas promover a este usuario a administrador?')) return;
+    try {
+      await promoteGroupMember(adminModalGroup.id, currentUserId, personId);
+      showToast('✅ Usuario promovido a administrador');
+      await loadAdminData(adminModalGroup.id);
+    } catch (err: any) {
+      showToast(err.response?.data?.message || '❌ Error al promover');
+    }
+  };
+
+  const handleRemove = async (personId: string) => {
+    if (!adminModalGroup || !window.confirm('¿Seguro que deseas remover a este usuario del grupo?')) return;
+    try {
+      await removeGroupMember(adminModalGroup.id, currentUserId, personId);
+      showToast('✅ Usuario removido del grupo');
+      await loadAdminData(adminModalGroup.id);
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.response?.data?.message || '❌ Error al remover');
+    }
+  };
+
+  const handleBlock = async (personId: string) => {
+    if (!adminModalGroup || !window.confirm('¿Seguro que deseas bloquear a este usuario? No podrá volver a unirse.')) return;
+    try {
+      await blockGroupMember(adminModalGroup.id, currentUserId, personId);
+      showToast('🚫 Usuario bloqueado exitosamente');
+      await loadAdminData(adminModalGroup.id);
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.response?.data?.message || '❌ Error al bloquear');
+    }
+  };
+
+  const handleLeaveGroup = async (groupId: string) => {
+    if (!window.confirm('¿Estás seguro que deseas abandonar este grupo? Dejarás de recibir mensajes nuevos, pero conservarás el historial de los anteriores.')) return;
+    try {
+      await leaveGroup(groupId, currentUserId);
+      showToast('🚪 Has abandonado el grupo exitosamente');
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.response?.data?.message || '❌ Error al abandonar el grupo');
+    }
   };
 
   const unreadCount = inbox.filter((m) => !m.leido).length;
@@ -257,23 +359,34 @@ const MessagesPage = () => {
     return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
+  if (loading) {
+    return (
+      <div className="flex h-[calc(100vh-80px)] items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-gray-500 flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <p>Cargando mensajería...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
         <AdminHeader
-          title="Comunicaciones"
-          subtitle="Envía y recibe mensajes directos o a grupos"
+          title="Mensajería"
+          subtitle="Comunícate con personas individuales o grupos de forma rápida y segura"
           showBack
           onBack={() => navigate(-1)}
         />
 
         {toast && (
-          <div className="fixed top-6 right-6 z-[9999] animate-slide-in bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl px-5 py-3 text-sm font-medium text-gray-800 dark:text-gray-200 max-w-sm">
+          <div className="fixed top-6 right-6 z-[9999] animate-slide-in bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl px-5 py-3 text-sm font-medium text-gray-800 dark:text-gray-200 max-w-sm flex items-center gap-3">
             {toast}
           </div>
         )}
 
-        {/* Tabs */}
+        {/* ── TABS NAV ── */}
         <div className="flex gap-1 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-1 overflow-x-auto">
           <button
             onClick={() => setTab('inbox')}
@@ -298,6 +411,12 @@ const MessagesPage = () => {
             className={`flex-1 min-w-[120px] py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${tab === 'groups' ? 'bg-indigo-600 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
           >
             👥 Mis Grupos
+          </button>
+          <button
+            onClick={() => setTab('public_groups')}
+            className={`flex-1 min-w-[120px] py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${tab === 'public_groups' ? 'bg-indigo-600 text-white shadow' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+          >
+            🌍 Públicos
           </button>
         </div>
 
@@ -769,6 +888,20 @@ const MessagesPage = () => {
                             </div>
                           </div>
                         </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => openAdminModal(g)}
+                            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors border border-gray-200 dark:border-gray-600"
+                          >
+                            ⚙️ Administrar Miembros
+                          </button>
+                          <button
+                            onClick={() => handleLeaveGroup(g.id)}
+                            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-sm font-medium transition-colors border border-rose-200"
+                          >
+                            🚪 Abandonar
+                          </button>
+                        </div>
                       </div>
                       
                       {/* Añadir miembro al grupo */}
@@ -807,9 +940,264 @@ const MessagesPage = () => {
                 )}
               </div>
             </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mt-6">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="font-bold text-gray-900 dark:text-white text-lg">Grupos a los que pertenezco</h2>
+              </div>
+              
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {myGroups.filter(g => !g.isAdmin).length === 0 ? (
+                  <p className="p-6 text-center text-gray-500 dark:text-gray-400">No perteneces a ningún grupo adicional.</p>
+                ) : (
+                  myGroups.filter(g => !g.isAdmin).map(g => (
+                    <div key={g.id} className="p-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl bg-gray-50 rounded-lg p-2 border">{g.icon || '👥'}</span>
+                          <div>
+                            <h3 className="font-bold text-indigo-600 dark:text-indigo-400 text-lg">{g.nombre}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded uppercase font-medium">{g.isPublic ? 'Público' : 'Privado'}</span>
+                              <span className="text-xs text-gray-500">{g.descripcion}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleLeaveGroup(g.id)}
+                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-sm font-medium transition-colors border border-rose-200"
+                        >
+                          🚪 Abandonar
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── DIRECTORIO DE GRUPOS PÚBLICOS ── */}
+        {tab === 'public_groups' && (
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden p-6">
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
+                <h2 className="font-bold text-gray-900 dark:text-white text-xl">🌍 Directorio de Grupos Públicos</h2>
+                <div className="relative w-full md:w-72">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                  </span>
+                  <input
+                    type="text"
+                    value={publicGroupSearchTerm}
+                    onChange={(e) => setPublicGroupSearchTerm(e.target.value)}
+                    placeholder="Buscar por nombre o descripción..."
+                    className="w-full pl-10 p-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {publicGroups.filter(g => 
+                  g.nombre.toLowerCase().includes(publicGroupSearchTerm.toLowerCase()) || 
+                  (g.descripcion && g.descripcion.toLowerCase().includes(publicGroupSearchTerm.toLowerCase()))
+                ).length === 0 ? (
+                  <p className="text-gray-500 dark:text-gray-400 col-span-full text-center py-8 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">No se encontraron grupos públicos.</p>
+                ) : (
+                  publicGroups.filter(g => 
+                    g.nombre.toLowerCase().includes(publicGroupSearchTerm.toLowerCase()) || 
+                    (g.descripcion && g.descripcion.toLowerCase().includes(publicGroupSearchTerm.toLowerCase()))
+                  ).map(g => (
+                    <div key={g.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-md transition-shadow flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-start justify-between mb-3">
+                          <span className="text-4xl">{g.icon || '🌍'}</span>
+                          <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold px-2 py-1 rounded-full">
+                            {g.memberCount} miembros
+                          </span>
+                        </div>
+                        <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">{g.nombre}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 line-clamp-3 min-h-[60px]">
+                          {g.descripcion || 'Sin descripción'}
+                        </p>
+                      </div>
+                      
+                      <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                        {g.isMember ? (
+                          <div className="w-full py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-center rounded-lg text-sm font-bold cursor-not-allowed">
+                            Ya eres miembro ✓
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleJoinPublicGroup(g.id)}
+                            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-colors shadow-sm shadow-indigo-600/20"
+                          >
+                            Unirse al grupo
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
+
+      {/* ── ADMIN MODAL ── */}
+      {adminModalGroup && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-slide-in">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            
+            <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">{adminModalGroup.icon}</span>
+                <div>
+                  <h2 className="font-bold text-xl text-gray-900 dark:text-white">Administración: {adminModalGroup.nombre}</h2>
+                  <p className="text-sm text-gray-500">Gestiona los miembros, roles y bloqueos del grupo.</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setAdminModalGroup(null)}
+                className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5">
+              <button
+                onClick={() => setAdminModalTab('members')}
+                className={`px-5 py-3 text-sm font-bold border-b-2 transition-colors ${adminModalTab === 'members' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              >
+                👥 Lista de Miembros
+              </button>
+              <button
+                onClick={() => setAdminModalTab('logs')}
+                className={`px-5 py-3 text-sm font-bold border-b-2 transition-colors ${adminModalTab === 'logs' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              >
+                📜 Historial (Logs)
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto flex-1 bg-white dark:bg-gray-800">
+              {loadingAdmin ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : adminModalTab === 'members' ? (
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    value={adminMemberSearch}
+                    onChange={(e) => setAdminMemberSearch(e.target.value)}
+                    placeholder="🔍 Buscar miembro por nombre o correo..."
+                    className="w-full p-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-sm outline-none"
+                  />
+                  
+                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                        <tr>
+                          <th className="p-3 font-medium">Nombre / Email</th>
+                          <th className="p-3 font-medium">Rol</th>
+                          <th className="p-3 font-medium">Fecha Unión</th>
+                          <th className="p-3 font-medium text-right">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {adminMembers
+                          .filter(m => `${m.name} ${m.lastName} ${m.email}`.toLowerCase().includes(adminMemberSearch.toLowerCase()))
+                          .map(m => (
+                          <tr key={m.userId} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                            <td className="p-3">
+                              <div className="font-bold text-gray-900 dark:text-white">{m.name} {m.lastName} {m.userId === currentUserId && '(Tú)'}</div>
+                              <div className="text-xs text-gray-500">{m.email}</div>
+                            </td>
+                            <td className="p-3">
+                              {m.isAdmin ? (
+                                <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs font-bold uppercase">Admin</span>
+                              ) : (
+                                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-medium uppercase">Miembro</span>
+                              )}
+                            </td>
+                            <td className="p-3 text-gray-500 text-xs">
+                              {m.fecha_union ? new Date(m.fecha_union).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="p-3 text-right">
+                              {m.userId !== currentUserId && (
+                                <div className="flex justify-end gap-1">
+                                  {!m.isAdmin && (
+                                    <button onClick={() => handlePromote(m.userId)} title="Promover a Admin" className="p-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded">
+                                      👑
+                                    </button>
+                                  )}
+                                  <button onClick={() => handleRemove(m.userId)} title="Remover del grupo" className="p-1.5 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded">
+                                    ❌
+                                  </button>
+                                  <button onClick={() => handleBlock(m.userId)} title="Bloquear usuario" className="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded">
+                                    🚫
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                      <tr>
+                        <th className="p-3 font-medium">Fecha</th>
+                        <th className="p-3 font-medium">Actor</th>
+                        <th className="p-3 font-medium">Acción</th>
+                        <th className="p-3 font-medium">Afectado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                      {adminLogs.map(l => (
+                        <tr key={l.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                          <td className="p-3 text-gray-500 text-xs whitespace-nowrap">
+                            {new Date(l.created_at).toLocaleString()}
+                          </td>
+                          <td className="p-3 font-medium text-gray-900 dark:text-gray-300">{l.actorName}</td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              l.action === 'JOINED' ? 'bg-emerald-100 text-emerald-700' :
+                              l.action === 'ADDED' ? 'bg-blue-100 text-blue-700' :
+                              l.action === 'PROMOTED' ? 'bg-purple-100 text-purple-700' :
+                              l.action === 'REMOVED' ? 'bg-amber-100 text-amber-700' :
+                              'bg-rose-100 text-rose-700'
+                            }`}>
+                              {l.action}
+                            </span>
+                          </td>
+                          <td className="p-3 text-gray-600 dark:text-gray-400">{l.targetName}</td>
+                        </tr>
+                      ))}
+                      {adminLogs.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="p-6 text-center text-gray-500">No hay registros de auditoría aún.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-end">
+              <Button onClick={() => setAdminModalGroup(null)} variant="secondary">Cerrar Administrador</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes slide-in {

@@ -1,16 +1,18 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
+import { Message } from './entities/message.entity';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { CreateMassAlertDto } from './dto/create-mass-alert.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
-import { MessagesGateway } from './messages.gateway';
-import { Message } from './entities/message.entity';
-import { MessageRecipientPerson } from './entities/message-recipient-person.entity';
-import { MessageRecipientGroup } from './entities/message-recipient-group.entity';
-import { Group } from './entities/group.entity';
-import { GroupPerson } from './entities/group-person.entity';
+
 import { Person } from '../persons/entities/person.entity';
+import { GroupPerson } from '../group-persons/entities/group-person.entity';
+import { Group } from '../groups/entities/group.entity';
+import { MessageRecipientPerson } from '../message-recipient-persons/entities/message-recipient-person.entity';
+import { MessageRecipientGroup } from '../message-recipient-groups/entities/message-recipient-group.entity';
+import { MessagesGateway } from './messages.gateway';
+import { GroupsService } from '../groups/groups.service';
 
 @Injectable()
 export class MessagesService {
@@ -22,13 +24,15 @@ export class MessagesService {
     private readonly recipientRepository: Repository<MessageRecipientPerson>,
     @InjectRepository(MessageRecipientGroup)
     private readonly recipientGroupRepository: Repository<MessageRecipientGroup>,
-    @InjectRepository(Group)
-    private readonly groupRepository: Repository<Group>,
     @InjectRepository(GroupPerson)
     private readonly groupPersonRepository: Repository<GroupPerson>,
+    @InjectRepository(Group)
+    private readonly groupRepository: Repository<Group>,
     @InjectRepository(Person)
     private readonly personRepository: Repository<Person>,
     private readonly messagesGateway: MessagesGateway,
+    @Inject(forwardRef(() => GroupsService))
+    private readonly groupsService: GroupsService,
   ) {}
 
   /**
@@ -46,9 +50,12 @@ export class MessagesService {
       throw new BadRequestException('El mensaje no puede exceder los 500 caracteres');
     }
 
+    const emisor = await this.personRepository.findOne({ where: { userId: dto.emisor_id } });
+    if (!emisor) throw new BadRequestException('El usuario emisor no existe');
+
     const message = this.messageRepository.create({
       contenido: dto.contenido,
-      emisor_id: dto.emisor_id,
+      emisor,
       latitud: dto.latitud,
       longitud: dto.longitud,
       is_mass_alert: false,
@@ -67,21 +74,25 @@ export class MessagesService {
             this.recipientGroupRepository.create({ message: savedMessage, group })
           );
 
-          const members = await this.groupPersonRepository.find({ where: { group: { id: groupId } } });
+          const members = await this.groupPersonRepository.find({ 
+            where: { group: { id: groupId }, is_blocked: false },
+            relations: ['persona']
+          });
+          
           for (const member of members) {
-            if (member.person_id !== dto.emisor_id) {
+            if (member.persona && member.persona.userId !== dto.emisor_id) {
               const existing = await this.recipientRepository.findOne({
-                where: { message: { id: savedMessage.id }, destinatario_id: member.person_id }
+                where: { message: { id: savedMessage.id }, persona: { id: member.persona.id } }
               });
               if (!existing) {
                 await this.recipientRepository.save(
                   this.recipientRepository.create({
                     message: savedMessage,
-                    destinatario_id: member.person_id,
+                    persona: member.persona,
                     leido: false,
                   })
                 );
-                notifyUserIds.add(member.person_id);
+                notifyUserIds.add(member.persona.userId);
               }
             }
           }
@@ -91,10 +102,14 @@ export class MessagesService {
       if (dto.emisor_id === dto.destinatario_id) {
         throw new BadRequestException('No puedes enviarte un mensaje a ti mismo');
       }
+      
+      const destinatario = await this.personRepository.findOne({ where: { userId: dto.destinatario_id } });
+      if (!destinatario) throw new BadRequestException('El destinatario no existe');
+
       await this.recipientRepository.save(
         this.recipientRepository.create({
           message: savedMessage,
-          destinatario_id: dto.destinatario_id,
+          persona: destinatario,
           leido: false,
         })
       );
@@ -144,9 +159,11 @@ export class MessagesService {
       throw new BadRequestException('No se encontraron destinatarios para el alcance seleccionado');
     }
 
+    const emisor = dto.emisor_id ? await this.personRepository.findOne({ where: { userId: dto.emisor_id } }) : null;
+
     const messageObj: any = {
       contenido: dto.contenido,
-      emisor_id: dto.emisor_id,
+      emisor,
       is_mass_alert: true,
       is_urgent: dto.isUrgent || false,
       mass_alert_scope: dto.scope === 'ALL' ? 'ALL' : `${dto.scope}:${dto.scopeValue}`,
@@ -165,7 +182,7 @@ export class MessagesService {
     const recipients = persons.filter(p => p.userId !== dto.emisor_id).map(p => {
       return this.recipientRepository.create({
         message: savedMessage as any,
-        destinatario_id: p.userId,
+        persona: p,
         leido: false,
       });
     });
@@ -181,7 +198,7 @@ export class MessagesService {
 
     // Notify Users if not scheduled for future
     if (!dto.scheduledFor || new Date(dto.scheduledFor).getTime() <= Date.now()) {
-      const recipientIds = recipients.map(r => r.destinatario_id);
+      const recipientIds = recipients.map(r => r.persona.userId);
       this.messagesGateway.notifyUsers(recipientIds, 'newMassAlert', { 
         messageId: savedMessage.id, 
         isUrgent: savedMessage.is_urgent,
@@ -197,7 +214,7 @@ export class MessagesService {
    */
   async getMassAlertStats(userId: string) {
     const alerts = await this.messageRepository.find({
-      where: { emisor_id: userId, is_mass_alert: true },
+      where: { emisor: { userId }, is_mass_alert: true },
       order: { fecha_envio: 'DESC' }
     });
 
@@ -219,11 +236,6 @@ export class MessagesService {
     return stats;
   }
 
-  // Compatibilidad hacia atrás
-  async sendDirectMessage(dto: CreateMessageDto) {
-    return this.sendMessage(dto);
-  }
-
   /**
    * Obtener bandeja de entrada de un usuario.
    */
@@ -231,14 +243,16 @@ export class MessagesService {
     const recipients = await this.recipientRepository
       .createQueryBuilder('r')
       .innerJoinAndSelect('r.message', 'msg')
-      .where('r.destinatario_id = :userId', { userId })
+      .innerJoin('r.persona', 'persona')
+      .innerJoinAndSelect('msg.emisor', 'emisor')
+      .where('persona.userId = :userId', { userId })
       .andWhere('(msg.fecha_envio <= :now)', { now: new Date() })
       .orderBy('msg.fecha_envio', 'DESC')
       .getMany();
 
     const enriched = await Promise.all(
       recipients.map(async (r) => {
-        const emisor = await this.personRepository.findOne({ where: { userId: r.message.emisor_id } });
+        const emisor = r.message.emisor;
         const recGroup = await this.recipientGroupRepository.findOne({
           where: { message: { id: r.message.id } },
           relations: ['group'],
@@ -263,7 +277,7 @@ export class MessagesService {
           isUrgent: r.message.is_urgent,
           emisor: emisor
             ? { id: emisor.id, userId: emisor.userId, name: emisor.name, lastName: emisor.lastName, email: emisor.email }
-            : { userId: r.message.emisor_id, name: 'Usuario', lastName: 'Desconocido' },
+            : { userId: 'unknown', name: 'Usuario', lastName: 'Desconocido' },
         };
       })
     );
@@ -277,24 +291,28 @@ export class MessagesService {
   async getSent(userId: string) {
     const messages = await this.messageRepository
       .createQueryBuilder('msg')
-      .where('msg.emisor_id = :userId', { userId })
+      .innerJoin('msg.emisor', 'emisor')
+      .where('emisor.userId = :userId', { userId })
       .orderBy('msg.fecha_envio', 'DESC')
       .getMany();
 
     const enriched = await Promise.all(
       messages.map(async (msg) => {
-        const recipients = await this.recipientRepository.find({ where: { message: { id: msg.id } } });
+        const recipients = await this.recipientRepository.find({ 
+          where: { message: { id: msg.id } },
+          relations: ['persona'] 
+        });
         
         const destinatarios = await Promise.all(
           recipients.map(async (r) => {
-            const person = await this.personRepository.findOne({ where: { userId: r.destinatario_id } });
+            const person = r.persona;
             return {
               recipientId: r.id,
               leido: r.leido,
               fecha_lectura: r.fecha_lectura,
               persona: person
                 ? { id: person.id, userId: person.userId, name: person.name, lastName: person.lastName, email: person.email }
-                : { userId: r.destinatario_id, name: 'Usuario', lastName: 'Desconocido' },
+                : { userId: 'unknown', name: 'Usuario', lastName: 'Desconocido' },
             };
           })
         );
@@ -328,7 +346,7 @@ export class MessagesService {
    */
   async markAsRead(recipientId: string, userId: string) {
     const recipient = await this.recipientRepository.findOne({
-      where: { id: recipientId, destinatario_id: userId },
+      where: { id: recipientId, persona: { userId } },
     });
     if (!recipient) throw new NotFoundException('Mensaje no encontrado');
     if (recipient.leido) return recipient;
@@ -342,7 +360,10 @@ export class MessagesService {
    * Eliminar mensaje (si se es admin del grupo o si es el emisor directo).
    */
   async deleteMessage(messageId: string, userId: string) {
-    const msg = await this.messageRepository.findOne({ where: { id: messageId } });
+    const msg = await this.messageRepository.findOne({ 
+      where: { id: messageId },
+      relations: ['emisor']
+    });
     if (!msg) throw new NotFoundException('Mensaje no encontrado');
 
     const recGroups = await this.recipientGroupRepository.find({
@@ -352,12 +373,12 @@ export class MessagesService {
 
     let isAuthorized = false;
 
-    if (msg.emisor_id === userId) {
+    if (msg.emisor?.userId === userId) {
       isAuthorized = true;
     } else if (recGroups.length > 0) {
       for (const rg of recGroups) {
         const adminCheck = await this.groupPersonRepository.findOne({
-          where: { person_id: userId, group: { id: rg.group.id }, is_admin: true }
+          where: { persona: { userId }, group: { id: rg.group.id }, is_admin: true }
         });
         if (adminCheck) {
           isAuthorized = true;
@@ -372,131 +393,6 @@ export class MessagesService {
 
     await this.messageRepository.remove(msg);
     return { success: true };
-  }
-
-  /**
-   * Crear un nuevo grupo, añadir al creador como admin, añadir miembros y notificar.
-   */
-  async createGroup(userId: string, nombre: string, descripcion: string = '', isPublic: boolean = false, icon: string = '👥', memberIds: string[] = []) {
-    if (memberIds.length < 2) {
-      throw new BadRequestException('Debe añadir al menos 2 miembros adicionales al grupo.');
-    }
-
-    const group = this.groupRepository.create({
-      nombre,
-      descripcion,
-      is_public: isPublic,
-      icon,
-    });
-    const savedGroup = await this.groupRepository.save(group);
-
-    // Añadir creador como admin
-    await this.groupPersonRepository.save(
-      this.groupPersonRepository.create({
-        group: savedGroup,
-        person_id: userId,
-        is_admin: true,
-      })
-    );
-
-    // Añadir miembros iniciales
-    for (const memberId of memberIds) {
-      if (memberId !== userId) {
-        await this.groupPersonRepository.save(
-          this.groupPersonRepository.create({
-            group: savedGroup,
-            person_id: memberId,
-            is_admin: false,
-          })
-        );
-      }
-    }
-
-    // Notificar a los miembros por mensaje directo
-    const creator = await this.personRepository.findOne({ where: { userId } });
-    const creatorName = creator ? `${creator.name} ${creator.lastName}` : 'Un usuario';
-    
-    // Usamos el fan-out de mensaje de grupo para que llegue etiquetado como grupo
-    await this.sendMessage({
-      emisor_id: userId,
-      grupos_id: [savedGroup.id],
-      contenido: `¡Hola! ${creatorName} ha creado este grupo y te ha añadido.`,
-    });
-
-    return savedGroup;
-  }
-
-  /**
-   * Obtener los grupos a los que pertenece un usuario.
-   */
-  async getMyGroups(userId: string) {
-    const groupPersons = await this.groupPersonRepository.find({
-      where: { person_id: userId },
-      relations: ['group'],
-    });
-
-    return groupPersons.map(gp => ({
-      id: gp.group.id,
-      nombre: gp.group.nombre,
-      descripcion: gp.group.descripcion,
-      isPublic: gp.group.is_public,
-      icon: gp.group.icon,
-      isAdmin: gp.is_admin,
-    }));
-  }
-
-  /**
-   * Añadir un miembro a un grupo.
-   */
-  async addMemberToGroup(groupId: string, adminId: string, personId: string) {
-    const group = await this.groupRepository.findOne({ where: { id: groupId } });
-    if (!group) throw new NotFoundException('Grupo no encontrado');
-
-    const adminCheck = await this.groupPersonRepository.findOne({
-      where: { person_id: adminId, group: { id: groupId }, is_admin: true }
-    });
-
-    if (!adminCheck) {
-      throw new ForbiddenException('No tienes permiso de administrador para añadir miembros');
-    }
-
-    const existing = await this.groupPersonRepository.findOne({
-      where: { group: { id: groupId }, person_id: personId }
-    });
-
-    if (existing) throw new BadRequestException('El usuario ya pertenece al grupo');
-
-    const member = this.groupPersonRepository.create({
-      group,
-      person_id: personId,
-      is_admin: false,
-    });
-    const savedMember = await this.groupPersonRepository.save(member);
-
-    // Notificar al usuario por mensaje directo
-    await this.sendMessage({
-      emisor_id: adminId,
-      destinatario_id: personId,
-      contenido: `Has sido añadido al grupo: ${group.nombre} ${group.icon || ''}`,
-    });
-
-    return savedMember;
-  }
-
-  /**
-   * Listar miembros de un grupo.
-   */
-  async getGroupMembers(groupId: string) {
-    const members = await this.groupPersonRepository.find({
-      where: { group: { id: groupId } }
-    });
-
-    return await Promise.all(members.map(async (m) => {
-      const p = await this.personRepository.findOne({ where: { userId: m.person_id } });
-      return p 
-        ? { id: p.id, userId: p.userId, name: p.name, lastName: p.lastName, email: p.email, isAdmin: m.is_admin } 
-        : { userId: m.person_id, isAdmin: m.is_admin };
-    }));
   }
 
   /**

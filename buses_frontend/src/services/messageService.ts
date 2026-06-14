@@ -6,6 +6,8 @@ export interface MessagePerson {
   name: string;
   lastName: string;
   email?: string;
+  isAdmin?: boolean;
+  fecha_union?: string;
 }
 
 export interface Group {
@@ -122,21 +124,72 @@ export const getMassAlertStats = async (userId: string): Promise<MassAlertStats[
 // ── Groups ──
 
 export const createGroup = async (userId: string, nombre: string, descripcion: string = '', isPublic: boolean = false, icon: string = '👥', memberIds: string[] = []): Promise<Group> => {
-  const response = await httpBusiness.post('/messages/groups', { userId, nombre, descripcion, isPublic, icon, memberIds });
+  const response = await httpBusiness.post('/groups', { userId, nombre, descripcion, isPublic, icon, memberIds });
   return response.data;
 };
 
 export const getMyGroups = async (userId: string): Promise<Group[]> => {
-  const response = await httpBusiness.get<Group[]>(`/messages/groups/my-groups/${userId}`);
+  const response = await httpBusiness.get<Group[]>(`/groups/my-groups/${userId}`);
   return response.data;
 };
 
 export const addMemberToGroup = async (groupId: string, adminId: string, personId: string): Promise<any> => {
-  const response = await httpBusiness.post(`/messages/groups/${groupId}/members`, { adminId, personId });
+  const response = await httpBusiness.post(`/groups/${groupId}/members`, { adminId, personId });
   return response.data;
 };
 
 export const getGroupMembers = async (groupId: string): Promise<MessagePerson[]> => {
-  const response = await httpBusiness.get<MessagePerson[]>(`/messages/groups/${groupId}/members`);
+  const response = await httpBusiness.get<MessagePerson[]>(`/groups/${groupId}/members`);
+  return response.data;
+};
+
+export const getPublicGroups = async (userId?: string, search?: string): Promise<any[]> => {
+  const params = new URLSearchParams();
+  if (userId) params.append('userId', userId);
+  if (search) params.append('search', search);
+  
+  const response = await httpBusiness.get<any[]>(`/groups/public?${params.toString()}`);
+  return response.data;
+};
+
+export const joinPublicGroup = async (groupId: string, userId: string): Promise<any> => {
+  const response = await httpBusiness.post(`/groups/${groupId}/join`, { userId });
+  return response.data;
+};
+
+export const leaveGroup = async (groupId: string, userId: string): Promise<any> => {
+  const response = await httpBusiness.post(`/groups/${groupId}/leave`, { userId });
+  return response.data;
+};
+
+// ── Group Administration ──
+
+export const promoteGroupMember = async (groupId: string, adminId: string, personId: string): Promise<any> => {
+  const response = await httpBusiness.patch(`/groups/${groupId}/members/${personId}/promote`, { userId: adminId });
+  return response.data;
+};
+
+export const removeGroupMember = async (groupId: string, adminId: string, personId: string): Promise<any> => {
+  const response = await httpBusiness.delete(`/groups/${groupId}/members/${personId}?adminId=${adminId}`);
+  return response.data;
+};
+
+export const blockGroupMember = async (groupId: string, adminId: string, personId: string): Promise<any> => {
+  const response = await httpBusiness.post(`/groups/${groupId}/members/${personId}/block`, { userId: adminId });
+  return response.data;
+};
+
+export interface GroupLog {
+  id: string;
+  action: string;
+  created_at: string;
+  actor_id: string;
+  target_id: string;
+  actorName: string;
+  targetName: string;
+}
+
+export const getGroupLogs = async (groupId: string, adminId: string): Promise<GroupLog[]> => {
+  const response = await httpBusiness.get<GroupLog[]>(`/groups/${groupId}/logs?adminId=${adminId}`);
   return response.data;
 };

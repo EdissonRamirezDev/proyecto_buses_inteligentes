@@ -21,9 +21,14 @@ import { MessagesModule } from './messages/messages.module';
 import { ReportsModule } from './reports/reports.module';
 import { PersonsModule } from './persons/persons.module';
 import { BusinessAdministratorModule } from './business_administrator/business_administrator.module';
+
 import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
 import { CitizenPaymentMethodsModule } from './citizen-payment-methods/citizen-payment-methods.module';
 import { AddressesModule } from './addresses/addresses.module';
+import { GroupsModule } from './groups/groups.module';
+import { GroupPersonsModule } from './group-persons/group-persons.module';
+import { MessageRecipientPersonsModule } from './message-recipient-persons/message-recipient-persons.module';
+import { MessageRecipientGroupsModule } from './message-recipient-groups/message-recipient-groups.module';
 
 @Module({
   imports: [
@@ -65,6 +70,10 @@ import { AddressesModule } from './addresses/addresses.module';
     PaymentMethodsModule,
     CitizenPaymentMethodsModule,
     AddressesModule,
+    GroupsModule,
+    GroupPersonsModule,
+    MessageRecipientPersonsModule,
+    MessageRecipientGroupsModule,
   ],
 })
 export class AppModule {}

@@ -3,13 +3,11 @@ import { MessagesService } from './messages.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { CreateMassAlertDto } from './dto/create-mass-alert.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
-import { CreateGroupDto } from './dto/create-group.dto';
-import { AddMemberDto } from './dto/add-member.dto';
 import { UserIdDto } from './dto/user-id.dto';
-
 @Controller('messages')
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
+
 
   // ── Mensajes ──
 
@@ -58,38 +56,6 @@ export class MessagesController {
   @Get('mass-alerts/stats/:userId')
   getMassAlertStats(@Param('userId') userId: string) {
     return this.messagesService.getMassAlertStats(userId);
-  }
-
-  // ── Grupos ──
-
-  @Post('groups')
-  createGroup(@Body() body: CreateGroupDto) {
-    return this.messagesService.createGroup(
-      body.userId,
-      body.nombre,
-      body.descripcion,
-      body.isPublic,
-      body.icon,
-      body.memberIds
-    );
-  }
-
-  @Get('groups/my-groups/:userId')
-  getMyGroups(@Param('userId') userId: string) {
-    return this.messagesService.getMyGroups(userId);
-  }
-
-  @Post('groups/:groupId/members')
-  addMemberToGroup(
-    @Param('groupId') groupId: string,
-    @Body() body: AddMemberDto
-  ) {
-    return this.messagesService.addMemberToGroup(groupId, body.adminId, body.personId);
-  }
-
-  @Get('groups/:groupId/members')
-  getGroupMembers(@Param('groupId') groupId: string) {
-    return this.messagesService.getGroupMembers(groupId);
   }
 
   // ── CRUD genérico original ──
