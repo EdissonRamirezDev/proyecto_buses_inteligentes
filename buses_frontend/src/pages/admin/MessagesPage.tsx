@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useSocket } from '../../context/SocketContext';
 import AdminHeader from '../../components/common/AdminHeader';
 import Button from '../../components/common/Button';
 import {
@@ -26,6 +27,7 @@ const EMOJI_OPTIONS = ['👥', '🚌', '🏙️', '⚽', '🎓', '🚑', '🚨',
 const MessagesPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { triggerRefresh } = useSocket();
   const currentUserId = user?.id || '';
 
   const [tab, setTab] = useState<'inbox' | 'sent' | 'compose' | 'groups'>('inbox');
@@ -89,9 +91,9 @@ const MessagesPage = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 15000);
+    const interval = setInterval(fetchData, 60000); // reduced frequency since we have websockets
     return () => clearInterval(interval);
-  }, [currentUserId]);
+  }, [currentUserId, triggerRefresh]);
 
   const showToast = (msg: string) => {
     setToast(msg);
