@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MessagesService } from './messages.service';
 import { MessagesController } from './messages.controller';
+import { MessagesGateway } from './messages.gateway';
 import { Message } from './entities/message.entity';
 import { Group } from './entities/group.entity';
 import { GroupPerson } from './entities/group-person.entity';
@@ -19,7 +20,7 @@ import { Person } from '../persons/entities/person.entity';
     Person,
   ])],
   controllers: [MessagesController],
-  providers: [MessagesService],
+  providers: [MessagesService, MessagesGateway],
   exports: [MessagesService]
 })
 export class MessagesModule {}

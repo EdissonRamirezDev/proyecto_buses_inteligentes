@@ -110,6 +110,9 @@ const CitizenRoutes = () => {
   const [walkingPositions, setWalkingPositions] = useState<[number, number][]>([]);
   const [selectedWalkingStop, setSelectedWalkingStop] = useState<any | null>(null);
 
+  // Notificación de anticipación
+  const [notifyMinutes, setNotifyMinutes] = useState<number>(5);
+
   // Simulación de bus
   const [demoCountdown, setDemoCountdown] = useState<number | null>(null);
   const [demoActive, setDemoActive] = useState(false);
@@ -514,7 +517,7 @@ const CitizenRoutes = () => {
         // Mostrar alerta en UI garantizada
         setDemoAlert({
           title: '¡Tu bus se acerca! 🚌',
-          message: `El bus de la ruta ${routeName} está a unos 5 minutos de llegar al paradero ${stopName}. ¡Ve preparándote!`
+          message: `El bus de la ruta ${routeName} está a unos ${notifyMinutes} minutos de llegar al paradero ${stopName}. ¡Ve preparándote!`
         });
 
         playNotificationSound();
@@ -522,7 +525,7 @@ const CitizenRoutes = () => {
         // Intentar disparar notificación OS si tiene permisos
         if ("Notification" in window && Notification.permission === 'granted') {
           new Notification('¡Tu bus se acerca! 🚌', {
-            body: `El bus de la ruta ${routeName} está a unos 5 minutos de llegar al paradero ${stopName}. ¡Ve preparándote!`,
+            body: `El bus de la ruta ${routeName} está a unos ${notifyMinutes} minutos de llegar al paradero ${stopName}. ¡Ve preparándote!`,
             icon: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png'
           });
         }
@@ -539,7 +542,7 @@ const CitizenRoutes = () => {
       } else if (isSimulation) {
         alert('[DEMO] No se pudo obtener la ruta para la simulación.');
       } else {
-        alert(`Alarma configurada exitosamente. El sistema te notificará cuando el bus de la ruta ${routeName} esté a 5 minutos del paradero ${stopName}.`);
+        alert(`Alarma configurada exitosamente. El sistema te notificará cuando el bus de la ruta ${routeName} esté a ${notifyMinutes} minutos del paradero ${stopName}.`);
       }
     };
 
@@ -688,9 +691,19 @@ const CitizenRoutes = () => {
                                 
                                 {/* Botones de Alarma y Simulación */}
                                 <div className="flex gap-1 ml-2 items-center">
+                                  <select
+                                    value={notifyMinutes}
+                                    onChange={(e) => setNotifyMinutes(Number(e.target.value))}
+                                    className="bg-slate-700 text-amber-400 text-[10px] font-bold rounded-md px-1 py-1.5 border border-slate-600 outline-none cursor-pointer"
+                                    title="Minutos de anticipación"
+                                  >
+                                    <option value={5}>5m</option>
+                                    <option value={10}>10m</option>
+                                    <option value={15}>15m</option>
+                                  </select>
                                   <button 
                                     onClick={() => scheduleNotification(stop.nombre, r.nombre, false)}
-                                    title="Notificar cuando el bus esté cerca"
+                                    title={`Notificar ${notifyMinutes} min antes`}
                                     className="p-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-amber-400 transition-colors"
                                   >
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
@@ -1042,8 +1055,14 @@ const CitizenRoutes = () => {
               <div className="text-5xl mb-3">🚌</div>
               <h3 className="text-xl font-bold text-white">{demoAlert.title}</h3>
             </div>
-            <div className="p-6 text-center">
-              <p className="text-slate-300 mb-6">{demoAlert.message}</p>
+            <div className="p-6 text-center space-y-3">
+              <p className="text-slate-300 mb-4">{demoAlert.message}</p>
+              <Button 
+                onClick={() => { stopSimulation(); navigate('/citizen/wallet'); }}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2"
+              >
+                💳 Preparar Método de Pago
+              </Button>
               <Button 
                 onClick={stopSimulation}
                 className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition-colors shadow-lg shadow-indigo-500/30"

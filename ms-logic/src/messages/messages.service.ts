@@ -4,6 +4,7 @@ import { Repository, In } from 'typeorm';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { CreateMassAlertDto } from './dto/create-mass-alert.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';
+import { MessagesGateway } from './messages.gateway';
 import { Message } from './entities/message.entity';
 import { MessageRecipientPerson } from './entities/message-recipient-person.entity';
 import { MessageRecipientGroup } from './entities/message-recipient-group.entity';
@@ -27,6 +28,7 @@ export class MessagesService {
     private readonly groupPersonRepository: Repository<GroupPerson>,
     @InjectRepository(Person)
     private readonly personRepository: Repository<Person>,
+    private readonly messagesGateway: MessagesGateway,
   ) {}
 
   /**
@@ -49,8 +51,12 @@ export class MessagesService {
       emisor_id: dto.emisor_id,
       latitud: dto.latitud,
       longitud: dto.longitud,
+      is_mass_alert: false,
+      is_urgent: false,
     });
+
     const savedMessage = await this.messageRepository.save(message);
+    const notifyUserIds = new Set<string>();
 
     // Si es a grupos
     if (dto.grupos_id && dto.grupos_id.length > 0) {
@@ -75,6 +81,7 @@ export class MessagesService {
                     leido: false,
                   })
                 );
+                notifyUserIds.add(member.person_id);
               }
             }
           }
@@ -91,7 +98,11 @@ export class MessagesService {
           leido: false,
         })
       );
+      notifyUserIds.add(dto.destinatario_id);
     }
+
+    // Emit WebSocket Event
+    this.messagesGateway.notifyUsers(Array.from(notifyUserIds), 'newMessage', { messageId: savedMessage.id, senderId: dto.emisor_id });
 
     return { message: savedMessage };
   }
@@ -167,6 +178,16 @@ export class MessagesService {
 
     // Guardar en lotes si es necesario, aquí directo
     await this.recipientRepository.save(recipients);
+
+    // Notify Users if not scheduled for future
+    if (!dto.scheduledFor || new Date(dto.scheduledFor).getTime() <= Date.now()) {
+      const recipientIds = recipients.map(r => r.destinatario_id);
+      this.messagesGateway.notifyUsers(recipientIds, 'newMassAlert', { 
+        messageId: savedMessage.id, 
+        isUrgent: savedMessage.is_urgent,
+        contenido: savedMessage.contenido
+      });
+    }
 
     return { message: savedMessage, recipientCount: recipients.length };
   }
