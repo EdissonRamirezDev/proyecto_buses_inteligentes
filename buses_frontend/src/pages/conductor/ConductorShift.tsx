@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { getDrivers } from '../../services/driverService';
 import { getShifts, startShift } from '../../services/shiftService';
 import { syncBusCapacity } from '../../services/busService';
+import { getInbox } from '../../services/messageService';
 import {
   findShiftStartableNow,
   formatShiftWindow,
@@ -31,6 +32,7 @@ const ConductorShift = () => {
   const [activeShift, setActiveShift] = useState<Shift | null>(null);
   const [scheduledShift, setScheduledShift] = useState<Shift | null>(null);
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   
   // UI & Loading States
   const [loading, setLoading] = useState(true);
@@ -61,6 +63,13 @@ const ConductorShift = () => {
       
       if (myDriver) {
         setDriver(myDriver);
+        
+        if (user.id) {
+          getInbox(user.id).then(inbox => {
+            setUnreadMessages(inbox.filter(m => !m.leido).length);
+          }).catch(console.error);
+        }
+
         const allShifts = await getShifts();
         const myShifts = allShifts.filter((s) => s.driver?.id === myDriver.id);
         setDriverShifts(myShifts);
@@ -324,6 +333,24 @@ const ConductorShift = () => {
             {/* Operations Section */}
             <div className="space-y-1">
               <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-slate-500 px-3 hidden sm:block">Operación</span>
+              
+              <button
+                onClick={() => window.location.href = '/messages'}
+                className="w-full flex items-center justify-between sm:justify-start gap-3 p-3 rounded-xl text-sm font-medium transition-all text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-600 dark:hover:text-indigo-400"
+              >
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <span className="hidden sm:inline">Mensajes</span>
+                </div>
+                {unreadMessages > 0 && (
+                  <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {unreadMessages > 99 ? '99+' : unreadMessages}
+                  </span>
+                )}
+              </button>
+
               <button
                 onClick={() => {
                   if (!activeShift) {

@@ -4,12 +4,13 @@ import { UpdateBusDto } from './dto/update-bus.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Bus } from './entities/bus.entity';
 import { Ticket } from '../tickets/entities/ticket.entity';
-import { In, Repository } from 'typeorm';
+import { In, Repository, DataSource } from 'typeorm';
 import { CompaniesService } from 'src/companies/companies.service';
 import { randomUUID } from 'crypto';
 import { persistBusPhotoUrl } from '../photos/photo-file.util';
 import { Schedule } from '../schedules/entities/schedule.entity';
 import { Shift } from '../shifts/entities/shift.entity';
+import { BusesIncident } from '../buses_incidents/entities/buses_incident.entity';
 
 export interface BusCapacityInfo {
   max: number;
@@ -31,7 +32,8 @@ export class BusesService {
     private readonly scheduleRepository: Repository<Schedule>,
     @InjectRepository(Shift)
     private readonly shiftRepository: Repository<Shift>,
-    private readonly companyService: CompaniesService
+    private readonly companyService: CompaniesService,
+    private dataSource: DataSource
   ) { }
 
   /** Impide mover de empresa si el bus tiene servicios o turnos activos. */
@@ -163,6 +165,68 @@ export class BusesService {
     return await this.busRepository.find({
       relations: ['company']
     });
+  }
+
+  async getLiveFleetStatus(): Promise<any> {
+    const qb = this.busRepository.createQueryBuilder('bus')
+      .innerJoinAndSelect('bus.gps', 'gps'); // Only buses with GPS
+    
+    const buses = await qb.getMany();
+    
+    // Get all active incidents for these buses
+    const incidents = await this.dataSource.getRepository(BusesIncident)
+      .createQueryBuilder('bi')
+      .leftJoinAndSelect('bi.bus', 'bus')
+      .innerJoinAndSelect('bi.incident', 'incident')
+      .where('incident.state != :state1', { state1: 'Resuelto' })
+      .andWhere('incident.state != :state2', { state2: 'Cerrado' })
+      .getMany();
+      
+    // Get all active tickets for currently active schedules
+    const activeSchedules = await this.scheduleRepository.createQueryBuilder('s')
+      .leftJoinAndSelect('s.bus', 'bus')
+      .leftJoinAndSelect('s.tickets', 'ticket', "ticket.estado = 'activo'")
+      .where("s.estado IN ('programado', 'en_curso')")
+      .getMany();
+
+    let totalPassengers = 0;
+    
+    const fleetStatus = buses.map(bus => {
+      const maxCap = this.getMaxCapacity(bus);
+      
+      const busSchedules = activeSchedules.filter(s => s.bus && s.bus.id === bus.id);
+      let activeTicketsCount = 0;
+      busSchedules.forEach(s => {
+        if (s.tickets) activeTicketsCount += s.tickets.length;
+      });
+      
+      totalPassengers += activeTicketsCount;
+      
+      const busIncidents = incidents.filter(i => i.bus?.id === bus.id);
+      const hasIncident = busIncidents.length > 0;
+      const isMaxOccupancy = activeTicketsCount >= maxCap;
+      
+      return {
+         id: bus.id,
+         placa: bus.placa,
+         latitude: bus.gps?.latitude,
+         longitude: bus.gps?.longitude,
+         estado: hasIncident ? 'incidente' : 'normal',
+         ocupacion: activeTicketsCount,
+         capacidad: maxCap,
+         alerta_ocupacion: isMaxOccupancy,
+         incidentes: busIncidents.map(bi => ({
+            type: bi.incident?.type,
+            severity: bi.incident?.severity,
+            description: bi.incident?.description
+         }))
+      };
+    });
+    
+    return {
+      totalPassengers,
+      buses: fleetStatus
+    };
   }
 
   async findOne(id: number) {

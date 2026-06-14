@@ -160,6 +160,13 @@ const DashboardPage = () => {
                 color="green"
               />
               <DashboardCard
+                to="/admin/live-fleet"
+                icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01" /></svg>}
+                title="Panel de Control en Vivo"
+                description="Monitorea toda la flota, incidentes y ocupación"
+                color="red"
+              />
+              <DashboardCard
                 to="/admin/drivers"
                 icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
                 title="Conductores"
@@ -261,6 +268,20 @@ const DashboardPage = () => {
             title="Dashboard Analítico"
             description="Estadísticas y monitor en vivo"
             color="blue"
+          />
+          <DashboardCard
+            to="/messages"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>}
+            title="Mensajes"
+            description="Envía y recibe mensajes directos"
+            color="indigo"
+          />
+          <DashboardCard
+            to="/admin/mass-alerts"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" /></svg>}
+            title="Alertas Masivas"
+            description="Comunica emergencias a todos los usuarios"
+            color="red"
           />
         </div>
       </main>

@@ -7,6 +7,7 @@ import { Group } from './entities/group.entity';
 import { GroupPerson } from './entities/group-person.entity';
 import { MessageRecipientPerson } from './entities/message-recipient-person.entity';
 import { MessageRecipientGroup } from './entities/message-recipient-group.entity';
+import { Person } from '../persons/entities/person.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([
@@ -14,7 +15,8 @@ import { MessageRecipientGroup } from './entities/message-recipient-group.entity
     Group, 
     GroupPerson, 
     MessageRecipientPerson, 
-    MessageRecipientGroup
+    MessageRecipientGroup,
+    Person,
   ])],
   controllers: [MessagesController],
   providers: [MessagesService],

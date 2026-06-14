@@ -44,4 +44,35 @@ export class RoutesService {
     const route = await this.findOne(id);
     await this.routeRepository.remove(route);
   }
+
+  async getActiveBuses(routeId: string): Promise<any[]> {
+    const route = await this.routeRepository.createQueryBuilder('route')
+      .leftJoinAndSelect('route.schedules', 'schedule')
+      .leftJoinAndSelect('schedule.bus', 'bus')
+      .leftJoinAndSelect('bus.gps', 'gps')
+      .where('route.id = :id', { id: routeId })
+      .getOne();
+
+    if (!route) {
+      throw new NotFoundException(`Route with ID ${routeId} not found`);
+    }
+
+    const activeBuses = route.schedules?.map(s => {
+      if (s.bus && s.bus.gps && s.bus.gps.latitude && s.bus.gps.longitude) {
+        return {
+          scheduleId: s.id,
+          estado: s.estado,
+          hora_salida: s.hora_salida,
+          tolerancia_minutos: s.tolerancia_minutos,
+          busId: s.bus.id,
+          placa: s.bus.placa,
+          latitude: s.bus.gps.latitude,
+          longitude: s.bus.gps.longitude,
+        };
+      }
+      return null;
+    }).filter(b => b !== null) || [];
+
+    return activeBuses;
+  }
 }
