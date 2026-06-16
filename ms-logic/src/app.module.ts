@@ -30,6 +30,7 @@ import { GroupPersonsModule } from './group-persons/group-persons.module';
 import { MessageRecipientPersonsModule } from './message-recipient-persons/message-recipient-persons.module';
 import { MessageRecipientGroupsModule } from './message-recipient-groups/message-recipient-groups.module';
 import { BusProximityAlertsModule } from './bus-proximity-alerts/bus-proximity-alerts.module';
+import { AppointmentsModule } from './appointments/appointments.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { BusProximityAlertsModule } from './bus-proximity-alerts/bus-proximity-a
     MessageRecipientPersonsModule,
     MessageRecipientGroupsModule,
     BusProximityAlertsModule,
+    AppointmentsModule,
   ],
 })
 export class AppModule {}

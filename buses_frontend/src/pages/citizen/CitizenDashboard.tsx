@@ -309,7 +309,7 @@ const CitizenDashboard = () => {
         </div>
 
         {/* Accesos rápidos */}
-        <div className="mt-8 mb-8 grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="mt-8 mb-8 grid grid-cols-2 md:grid-cols-6 gap-4">
           <button onClick={() => navigate('/citizen/routes')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-4 text-center transition">
             <span className="text-2xl">🗺️</span>
             <p className="text-sm text-slate-300 mt-2">Ver Rutas</p>
@@ -321,6 +321,11 @@ const CitizenDashboard = () => {
           <button onClick={() => navigate('/citizen/wallet')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-4 text-center transition">
             <span className="text-2xl">💳</span>
             <p className="text-sm text-slate-300 mt-2">Recargar</p>
+          </button>
+          <button onClick={() => navigate('/citizen/support')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-4 text-center transition relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-12 h-12 bg-emerald-500/10 rounded-bl-full -mr-2 -mt-2"></div>
+            <span className="text-2xl">🎧</span>
+            <p className="text-sm text-slate-300 mt-2 group-hover:text-emerald-400 transition-colors">Atención Cliente</p>
           </button>
           <button onClick={() => navigate('/messages')} className="bg-slate-800 hover:bg-slate-700 border border-indigo-600/50 rounded-xl p-4 text-center transition flex flex-col items-center justify-center">
             <div className="relative inline-block">

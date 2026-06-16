@@ -41,6 +41,7 @@ import CitizenDashboard from '../pages/citizen/CitizenDashboard'
 import CitizenRoutes from '../pages/citizen/CitizenRoutes'
 import CitizenPurchasePage from '../pages/citizen/CitizenPurchasePage'
 import CitizenWalletPage from '../pages/citizen/CitizenWalletPage'
+import CitizenAppointments from '../pages/citizen/CitizenAppointments'
 
 // Pages - Conductor
 import ConductorShift from '../pages/conductor/ConductorShift'
@@ -103,6 +104,7 @@ const AppRouter = () => {
         <Route path="/citizen/routes" element={<CitizenRoutes />} />
         <Route path="/citizen/purchase" element={<CitizenPurchasePage />} />
         <Route path="/citizen/wallet" element={<CitizenWalletPage />} />
+        <Route path="/citizen/support" element={<CitizenAppointments />} />
         <Route path="/conductor/turno" element={<ConductorShift />} />
         <Route path="/company-admin/dashboard" element={<CompanyAdminDashboard />} />
       </Route>
