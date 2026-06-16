@@ -21,9 +21,25 @@ export class MessagesController {
     return this.messagesService.searchPersons(query);
   }
 
+  @Get('unread-count/:userId')
+  getUnreadCount(@Param('userId') userId: string) {
+    return this.messagesService.getUnreadCount(userId);
+  }
+
   @Get('inbox/:userId')
-  getInbox(@Param('userId') userId: string) {
-    return this.messagesService.getInbox(userId);
+  getInbox(
+    @Param('userId') userId: string,
+    @Query('unread') unread?: string,
+    @Query('type') type?: 'individual' | 'group',
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+  ) {
+    return this.messagesService.getInbox(userId, {
+      unread: unread === 'true',
+      type,
+      dateFrom,
+      dateTo,
+    });
   }
 
   @Get('sent/:userId')

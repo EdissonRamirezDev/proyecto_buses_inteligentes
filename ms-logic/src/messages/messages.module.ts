@@ -23,6 +23,6 @@ import { MessageRecipientGroupsModule } from '../message-recipient-groups/messag
   ],
   controllers: [MessagesController],
   providers: [MessagesService, MessagesGateway],
-  exports: [MessagesService, TypeOrmModule]
+  exports: [MessagesService, MessagesGateway, TypeOrmModule]
 })
 export class MessagesModule {}

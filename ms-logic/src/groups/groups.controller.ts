@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
-import { AddMemberDto } from '../messages/dto/add-member.dto';
+import { AddMemberDto } from './dto/add-member.dto';
 import { UserIdDto } from '../messages/dto/user-id.dto';
 
 @Controller('groups')
@@ -34,8 +34,8 @@ export class GroupsController {
   }
 
   @Get(':groupId/members')
-  getGroupMembers(@Param('groupId') groupId: string) {
-    return this.groupsService.getGroupMembers(groupId);
+  getGroupMembers(@Param('groupId') groupId: string, @Query('search') search?: string) {
+    return this.groupsService.getGroupMembers(groupId, search);
   }
 
   @Get('public')
