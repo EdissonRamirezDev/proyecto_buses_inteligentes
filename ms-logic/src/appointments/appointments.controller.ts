@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, HttpException, HttpStatus, Query } from '@nestjs/common';
 import { AppointmentsService } from './appointments.service';
 import { ScheduleAppointmentDto } from './dto/schedule-appointment.dto';
 
@@ -7,9 +7,9 @@ export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
   @Get('availability')
-  async getAvailability() {
+  async getAvailability(@Query('asesorEmail') asesorEmail?: string) {
     try {
-      return await this.appointmentsService.getAvailability();
+      return await this.appointmentsService.getAvailability(asesorEmail);
     } catch (error) {
       throw new HttpException(
         'Error fetching availability from n8n',

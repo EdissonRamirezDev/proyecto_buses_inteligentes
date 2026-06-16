@@ -13,13 +13,15 @@ export class AppointmentsService {
 
   constructor(private readonly httpService: HttpService) {}
 
-  async getAvailability() {
+  async getAvailability(asesorEmail?: string) {
     try {
       this.logger.log(`Fetching availability from: ${this.n8nAvailabilityUrl}`);
       
       // Llamada HTTP al webhook de n8n
       const response = await lastValueFrom(
-        this.httpService.get(this.n8nAvailabilityUrl)
+        this.httpService.get(this.n8nAvailabilityUrl, {
+          params: { asesorEmail }
+        })
       );
       
       return response.data;

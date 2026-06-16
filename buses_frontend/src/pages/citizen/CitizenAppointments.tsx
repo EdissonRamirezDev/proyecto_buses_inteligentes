@@ -4,6 +4,9 @@ import { useAuth } from '../../hooks/useAuth';
 import Button from '../../components/common/Button';
 import { getAppointmentsAvailability, scheduleAppointment } from '../../services/appointmentsService';
 
+import { getAdvisors } from '../../services/advisorsService';
+import type { AdvisorData } from '../../services/advisorsService';
+
 export default function CitizenAppointments() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -18,13 +21,16 @@ export default function CitizenAppointments() {
   const [modalidad, setModalidad] = useState('Virtual');
   const [motivo, setMotivo] = useState('Problema con tarjeta');
   const [descripcion, setDescripcion] = useState('');
+  const [asesores, setAsesores] = useState<AdvisorData[]>([]);
+  const [selectedAsesorEmail, setSelectedAsesorEmail] = useState('');
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
 
   useEffect(() => {
     const fetchSlots = async () => {
       try {
+        setLoadingSlots(true);
         setErrorMsg('');
-        const slots = await getAppointmentsAvailability();
+        const slots = await getAppointmentsAvailability(selectedAsesorEmail);
         // Intentar extraer el arreglo si n8n lo mandó envuelto en un objeto
         let extractedSlots = [];
         if (Array.isArray(slots)) {
@@ -48,7 +54,25 @@ export default function CitizenAppointments() {
         setLoadingSlots(false);
       }
     };
-    fetchSlots();
+    if (selectedAsesorEmail) {
+      fetchSlots();
+    }
+  }, [selectedAsesorEmail]);
+
+  // Fetch asesores activos al montar
+  useEffect(() => {
+    const fetchAsesores = async () => {
+      try {
+        const activeAdvisors = await getAdvisors(true); // activeOnly = true
+        setAsesores(activeAdvisors);
+        if (activeAdvisors.length > 0) {
+          setSelectedAsesorEmail(activeAdvisors[0].email);
+        }
+      } catch (error) {
+        console.error('Error fetching advisors:', error);
+      }
+    };
+    fetchAsesores();
   }, []);
 
   // Agrupar slots por fecha (asegurando que availableSlots sea un Array)
@@ -94,6 +118,7 @@ export default function CitizenAppointments() {
         descripcion,
         fecha_inicio: startDateStr,
         fecha_fin: endDateStr,
+        asesorEmail: selectedAsesorEmail,
       });
       setSuccess(true);
     } catch (error) {
@@ -173,6 +198,16 @@ export default function CitizenAppointments() {
                     🏢 Presencial (Oficina)
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Asesor *</label>
+                <select value={selectedAsesorEmail} onChange={(e) => setSelectedAsesorEmail(e.target.value)} className="w-full bg-slate-800 border-slate-700 text-white rounded-lg p-3">
+                  {asesores.map(a => (
+                    <option key={a.id} value={a.email}>{a.nombre} - {a.email}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-400 mt-1">El calendario se actualizará según el asesor seleccionado.</p>
               </div>
 
               <div>

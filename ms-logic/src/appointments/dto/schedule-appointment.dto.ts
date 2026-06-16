@@ -35,4 +35,8 @@ export class ScheduleAppointmentDto {
   @IsString()
   @IsNotEmpty()
   fecha_fin: string; // ISO String
+
+  @IsEmail()
+  @IsNotEmpty()
+  asesorEmail: string;
 }
