@@ -17,6 +17,7 @@ import RolesPage from '../pages/admin/RolesPage'
 import PermissionsPage from '../pages/admin/PermissionsPage'
 import UsersPage from '../pages/admin/UsersPage'
 import UserRolesPage from '../pages/admin/UserRolesPage'
+import AdvisorsPage from '../pages/admin/AdvisorsPage'
 
 import BusesPage from '../pages/admin/BusesPage'
 import DriversPage from '../pages/admin/DriversPage'
@@ -73,6 +74,7 @@ const AppRouter = () => {
         <Route path="/admin/permissions" element={<PermissionsPage />} />
         <Route path="/admin/users" element={<UsersPage />} />
         <Route path="/admin/user-roles" element={<UserRolesPage />} />
+        <Route path="/admin/advisors" element={<AdvisorsPage />} />
         
         {/* Nuevas Rutas de Lógica */}
         <Route path="/admin/buses" element={<BusesPage />} />

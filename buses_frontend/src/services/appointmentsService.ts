@@ -9,10 +9,12 @@ export interface ScheduleAppointmentData {
   descripcion: string;
   fecha_inicio: string;
   fecha_fin: string;
+  asesorEmail: string;
 }
 
-export const getAppointmentsAvailability = async () => {
-  const response = await httpBusiness.get('/appointments/availability');
+export const getAppointmentsAvailability = async (asesorEmail?: string) => {
+  const params = asesorEmail ? { asesorEmail } : {};
+  const response = await httpBusiness.get('/appointments/availability', { params });
   return response.data;
 };
 
