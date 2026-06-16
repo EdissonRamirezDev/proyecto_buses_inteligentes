@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject, forwardRef, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, DataSource } from 'typeorm';
 import { Message } from './entities/message.entity';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { CreateMassAlertDto } from './dto/create-mass-alert.dto';
@@ -13,9 +13,12 @@ import { MessageRecipientPerson } from '../message-recipient-persons/entities/me
 import { MessageRecipientGroup } from '../message-recipient-groups/entities/message-recipient-group.entity';
 import { MessagesGateway } from './messages.gateway';
 import { GroupsService } from '../groups/groups.service';
+import { Ticket } from '../tickets/entities/ticket.entity';
+import { Schedule } from '../schedules/entities/schedule.entity';
 
 @Injectable()
-export class MessagesService {
+export class MessagesService implements OnModuleInit, OnModuleDestroy {
+  private timer: NodeJS.Timeout;
 
   constructor(
     @InjectRepository(Message)
@@ -33,7 +36,62 @@ export class MessagesService {
     private readonly messagesGateway: MessagesGateway,
     @Inject(forwardRef(() => GroupsService))
     private readonly groupsService: GroupsService,
+    private readonly dataSource: DataSource,
   ) {}
+
+  onModuleInit() {
+    // Check for scheduled alerts every minute
+    this.timer = setInterval(() => this.checkScheduledAlerts(), 60000);
+  }
+
+  onModuleDestroy() {
+    if (this.timer) clearInterval(this.timer);
+  }
+
+  /**
+   * Process scheduled mass alerts
+   */
+  async checkScheduledAlerts() {
+    const scheduledMessages = await this.messageRepository.find({
+      where: {
+        is_mass_alert: true,
+        // En un caso real usaríamos un flag como "procesado" en la BD.
+        // Aquí podemos confiar en que la fecha ya pasó y el push no se ha enviado.
+      }
+    });
+
+    const now = Date.now();
+    for (const msg of scheduledMessages) {
+      if (msg.scheduled_for && msg.scheduled_for.getTime() <= now) {
+        // Enviar notificación Push solo si no se ha enviado aún.
+        // Como no tenemos un flag "push_sent", podríamos limpiar scheduled_for,
+        // pero mejor sería añadir un flag si podemos.
+        // Por brevedad, lo enviaremos a todos los recipients de este mensaje.
+        
+        // Verifica si ya se notificó comprobando algo, o simplemente evita re-enviar.
+        // Como es un prototipo, asumimos que esto es suficiente si añadimos un chequeo rápido.
+        // Mejor limpiamos el scheduled_for
+        
+        const originalScheduledFor = msg.scheduled_for;
+        msg.scheduled_for = null as any; // Mark as processed
+        await this.messageRepository.save(msg);
+
+        const recipients = await this.recipientRepository.find({
+          where: { message: { id: msg.id } },
+          relations: ['persona']
+        });
+
+        if (recipients.length > 0) {
+          const recipientIds = recipients.map(r => r.persona.userId);
+          this.messagesGateway.notifyUsers(recipientIds, 'newMassAlert', { 
+            messageId: msg.id, 
+            isUrgent: msg.is_urgent,
+            contenido: msg.contenido
+          });
+        }
+      }
+    }
+  }
 
   /**
    * Envía un mensaje directo o a uno/varios grupos.
@@ -123,21 +181,112 @@ export class MessagesService {
   }
 
   /**
+   * Busca personas vinculadas a una ruta (compraron tickets en schedules de esa ruta).
+   */
+  private async findPersonsByRoute(routeId: string): Promise<Person[]> {
+    const citizenUserIds: { userId: string }[] = await this.dataSource
+      .createQueryBuilder()
+      .select('DISTINCT person.userId', 'userId')
+      .from('tickets', 'ticket')
+      .innerJoin('schedules', 'schedule', 'ticket.scheduleId = schedule.id')
+      .innerJoin('citizens', 'citizen', 'ticket.citizenId = citizen.id')
+      .innerJoin('persons', 'person', 'citizen.personId = person.id')
+      .where('schedule.routeId = :routeId', { routeId })
+      .getRawMany();
+
+    if (citizenUserIds.length === 0) return [];
+
+    const userIds = citizenUserIds.map(r => r.userId);
+    return this.personRepository.find({ where: { userId: In(userIds) } });
+  }
+
+  /**
+   * Busca personas vinculadas a una zona (tickets en schedules cuya ruta tiene paraderos en esa zona).
+   * scopeValue es el ID de un bus_stop que sirve como referencia de zona (radio 5km).
+   */
+  private async findPersonsByZone(zoneStopId: string): Promise<Person[]> {
+    // Obtener el paradero de referencia para la zona
+    const refStop = await this.dataSource
+      .createQueryBuilder()
+      .select('bs.latitud', 'lat')
+      .addSelect('bs.longitud', 'lng')
+      .from('bus_stops', 'bs')
+      .where('bs.id = :zoneStopId', { zoneStopId })
+      .getRawOne();
+
+    if (!refStop) {
+      // Si no se encuentra el paradero, retornar todos como fallback
+      return this.personRepository.find();
+    }
+
+    // Encontrar paraderos dentro de un radio de 5km usando fórmula Haversine simplificada
+    const lat = Number(refStop.lat);
+    const lng = Number(refStop.lng);
+    const radiusKm = 5;
+
+    const nearbyStopIds = await this.dataSource
+      .createQueryBuilder()
+      .select('bs.id', 'id')
+      .from('bus_stops', 'bs')
+      .where(`(
+        6371 * ACOS(
+          COS(RADIANS(:lat)) * COS(RADIANS(bs.latitud)) *
+          COS(RADIANS(bs.longitud) - RADIANS(:lng)) +
+          SIN(RADIANS(:lat)) * SIN(RADIANS(bs.latitud))
+        )
+      ) <= :radiusKm`, { lat, lng, radiusKm })
+      .getRawMany();
+
+    if (nearbyStopIds.length === 0) return this.personRepository.find();
+
+    // Encontrar rutas que pasan por esos paraderos
+    const routeIds = await this.dataSource
+      .createQueryBuilder()
+      .select('DISTINCT node.routeId', 'routeId')
+      .from('nodes', 'node')
+      .where('node.busStopId IN (:...stopIds)', { stopIds: nearbyStopIds.map(s => s.id) })
+      .getRawMany();
+
+    if (routeIds.length === 0) return this.personRepository.find();
+
+    // Encontrar personas con tickets en esas rutas
+    const citizenUserIds = await this.dataSource
+      .createQueryBuilder()
+      .select('DISTINCT person.userId', 'userId')
+      .from('tickets', 'ticket')
+      .innerJoin('schedules', 'schedule', 'ticket.scheduleId = schedule.id')
+      .innerJoin('citizens', 'citizen', 'ticket.citizenId = citizen.id')
+      .innerJoin('persons', 'person', 'citizen.personId = person.id')
+      .where('schedule.routeId IN (:...routeIds)', { routeIds: routeIds.map(r => r.routeId) })
+      .getRawMany();
+
+    if (citizenUserIds.length === 0) return this.personRepository.find();
+
+    return this.personRepository.find({ where: { userId: In(citizenUserIds.map(r => r.userId)) } });
+  }
+
+  /**
    * Calcula la cantidad de destinatarios para una alerta masiva
    */
   async calculateMassAlertRecipients(scope: 'ALL' | 'ROUTE' | 'ZONE', scopeValue?: string, emisorId?: string) {
-    let count = 0;
+    let persons: Person[] = [];
+
     if (scope === 'ALL') {
-      count = await this.personRepository.count();
-    } else if (scope === 'ROUTE' || scope === 'ZONE') {
-      // Simular encontrando un porcentaje de los usuarios
-      count = Math.max(1, Math.floor((await this.personRepository.count()) * 0.4));
+      persons = await this.personRepository.find();
+    } else if (scope === 'ROUTE' && scopeValue) {
+      persons = await this.findPersonsByRoute(scopeValue);
+    } else if (scope === 'ZONE' && scopeValue) {
+      persons = await this.findPersonsByZone(scopeValue);
+    } else {
+      persons = await this.personRepository.find();
     }
+
+    let count = persons.length;
     
     // Descontar al emisor si existe y la cuenta es mayor a 0
     if (emisorId && count > 0) {
-      const emisorExists = await this.personRepository.findOne({ where: { userId: emisorId } });
-      if (emisorExists) count -= 1;
+      const inList = persons.some(p => p.userId === emisorId);
+      if (inList) count -= 1;
     }
     
     return { count: Math.max(0, count) };
@@ -150,9 +299,12 @@ export class MessagesService {
     let persons: Person[] = [];
     if (dto.scope === 'ALL') {
       persons = await this.personRepository.find();
+    } else if (dto.scope === 'ROUTE' && dto.scopeValue) {
+      persons = await this.findPersonsByRoute(dto.scopeValue);
+    } else if (dto.scope === 'ZONE' && dto.scopeValue) {
+      persons = await this.findPersonsByZone(dto.scopeValue);
     } else {
-      // Simplificación para el prototipo
-      persons = await this.personRepository.find({ take: Math.max(1, Math.floor((await this.personRepository.count()) * 0.4)) });
+      persons = await this.personRepository.find();
     }
 
     if (persons.length === 0) {
@@ -237,9 +389,9 @@ export class MessagesService {
   }
 
   /**
-   * Obtener bandeja de entrada de un usuario.
+   * Obtener bandeja de entrada de un usuario con filtros opcionales.
    */
-  async getInbox(userId: string) {
+  async getInbox(userId: string, filters?: { unread?: boolean; type?: 'individual' | 'group'; dateFrom?: string; dateTo?: string }) {
     const recipients = await this.recipientRepository
       .createQueryBuilder('r')
       .innerJoinAndSelect('r.message', 'msg')
@@ -282,7 +434,47 @@ export class MessagesService {
       })
     );
 
-    return enriched;
+    // Aplicar filtros
+    let result = enriched;
+
+    if (filters?.unread === true) {
+      result = result.filter(m => !m.leido);
+    }
+
+    if (filters?.type === 'individual') {
+      result = result.filter(m => !m.esGrupo);
+    } else if (filters?.type === 'group') {
+      result = result.filter(m => m.esGrupo);
+    }
+
+    if (filters?.dateFrom) {
+      const from = new Date(filters.dateFrom);
+      result = result.filter(m => new Date(m.fecha_envio) >= from);
+    }
+
+    if (filters?.dateTo) {
+      const to = new Date(filters.dateTo);
+      to.setHours(23, 59, 59, 999);
+      result = result.filter(m => new Date(m.fecha_envio) <= to);
+    }
+
+    return result;
+  }
+
+  /**
+   * Contar mensajes no leídos de un usuario.
+   */
+  async getUnreadCount(userId: string) {
+    const count = await this.recipientRepository
+      .createQueryBuilder('r')
+      .innerJoin('r.message', 'msg')
+      .innerJoin('r.persona', 'persona')
+      .where('persona.userId = :userId', { userId })
+      .andWhere('r.leido = :leido', { leido: false })
+      .andWhere('msg.fecha_envio <= :now', { now: new Date() })
+      .getCount();
+
+    return { unreadCount: count };
   }
 
   /**

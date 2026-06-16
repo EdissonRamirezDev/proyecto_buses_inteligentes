@@ -6,6 +6,9 @@ import type { Route } from '../../types/route.types';
 import Button from '../../components/common/Button';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Polyline, Popup, CircleMarker, useMap, useMapEvents } from 'react-leaflet';
+import { useAuth } from '../../hooks/useAuth';
+import { socketService } from '../../services/socketService';
+import { subscribeToAlert } from '../../services/busProximityAlertsService';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -92,6 +95,7 @@ function MapEventsHandler({ onMapClick }: { onMapClick: (latlng: L.LatLng) => vo
 
 const CitizenRoutes = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [osrmPositions, setOsrmPositions] = useState<[number, number][]>([]);
@@ -134,6 +138,32 @@ const CitizenRoutes = () => {
   useEffect(() => {
     watchIdRef.current = watchId;
   }, [watchId]);
+
+  useEffect(() => {
+    if (user?.id) {
+      socketService.connect(user.id);
+      
+      const handleProximityAlert = (data: any) => {
+        setDemoAlert({
+          title: '¡Tu bus se acerca! 🚌',
+          message: data.mensaje || `El bus ${data.placa} llegará en ${data.eta_minutos} min.`
+        });
+        playNotificationSound();
+        if ("Notification" in window && Notification.permission === 'granted') {
+          new Notification('¡Tu bus se acerca! 🚌', {
+            body: data.mensaje,
+            icon: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png'
+          });
+        }
+      };
+
+      socketService.on('busProximityAlert', handleProximityAlert);
+      
+      return () => {
+        socketService.off('busProximityAlert', handleProximityAlert);
+      };
+    }
+  }, [user]);
 
   useEffect(() => {
     const load = async () => {
@@ -535,34 +565,37 @@ const CitizenRoutes = () => {
     }, stepTime);
   }, [stopSimulation]);
 
-  const scheduleNotification = (stopName: string, routeName: string, isSimulation: boolean = false, routeObj?: any) => {
-    const startAction = () => {
-      if (isSimulation && routeObj) {
-        startBusSimulation(routeObj, stopName, routeName);
-      } else if (isSimulation) {
-        alert('[DEMO] No se pudo obtener la ruta para la simulación.');
-      } else {
-        alert(`Alarma configurada exitosamente. El sistema te notificará cuando el bus de la ruta ${routeName} esté a ${notifyMinutes} minutos del paradero ${stopName}.`);
-      }
-    };
-
-    if (!("Notification" in window)) {
-      alert('Este navegador no soporta notificaciones de escritorio. Usaremos alertas en pantalla.');
-      startAction();
+  const scheduleNotification = async (stop: any, route: any, isSimulation: boolean = false) => {
+    if (isSimulation) {
+      startBusSimulation(route, stop.nombre, route.nombre);
       return;
     }
 
-    if (Notification.permission === 'granted') {
-      startAction();
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(function (permission) {
-        if (permission !== 'granted') {
-          alert('Permiso de notificaciones denegado. Se usarán alertas en pantalla para la demostración.');
-        }
-        startAction();
+    if (!user) {
+      alert('Debes iniciar sesión para configurar alertas reales.');
+      return;
+    }
+
+    try {
+      await subscribeToAlert({
+        userId: user.id, 
+        routeId: route.id,
+        busStopId: stop.id,
+        minutesAdvance: notifyMinutes
       });
-    } else {
-      startAction();
+      
+      const msg = `Alarma configurada exitosamente. Te notificaremos cuando el bus de la ruta ${route.nombre} esté a ${notifyMinutes} minutos del paradero ${stop.nombre}.`;
+      if ("Notification" in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') alert(msg);
+          else alert('Permiso denegado. ' + msg);
+        });
+      } else {
+        alert(msg);
+      }
+    } catch (error) {
+      console.error('Error suscribiendo a alerta:', error);
+      alert('Error al configurar la alarma. Intenta nuevamente.');
     }
   };
 
@@ -702,14 +735,14 @@ const CitizenRoutes = () => {
                                     <option value={15}>15m</option>
                                   </select>
                                   <button 
-                                    onClick={() => scheduleNotification(stop.nombre, r.nombre, false)}
+                                    onClick={() => scheduleNotification(stop, r, false)}
                                     title={`Notificar ${notifyMinutes} min antes`}
                                     className="p-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-amber-400 transition-colors"
                                   >
                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
                                   </button>
                                   <button 
-                                    onClick={() => scheduleNotification(stop.nombre, r.nombre, true, r)}
+                                    onClick={() => scheduleNotification(stop, r, true)}
                                     title="Simular llegada del bus (Demo)"
                                     disabled={demoActive}
                                     className={`p-1.5 rounded-md border transition-colors text-[10px] font-bold ${demoActive ? 'bg-slate-700 text-slate-500 border-slate-600 cursor-not-allowed' : 'bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border-indigo-500/30'}`}

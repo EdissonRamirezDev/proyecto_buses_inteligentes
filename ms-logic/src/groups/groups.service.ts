@@ -133,18 +133,30 @@ export class GroupsService {
   /**
    * Listar miembros de un grupo.
    */
-  async getGroupMembers(groupId: string) {
+  async getGroupMembers(groupId: string, search?: string) {
     const members = await this.groupPersonRepository.find({
       where: { group: { id: groupId }, is_blocked: false },
       relations: ['persona']
     });
 
-    return members.map(m => {
+    let mapped = members.map(m => {
       const p = m.persona;
       return p 
         ? { id: p.id, userId: p.userId, name: p.name, lastName: p.lastName, email: p.email, isAdmin: m.is_admin, fecha_union: m.fecha_union } 
-        : { userId: 'unknown', isAdmin: m.is_admin, fecha_union: m.fecha_union };
+        : { userId: 'unknown', isAdmin: m.is_admin, fecha_union: m.fecha_union } as any;
     });
+
+    // Filtrar por nombre si se proporcionó búsqueda
+    if (search && search.trim().length > 0) {
+      const q = search.trim().toLowerCase();
+      mapped = mapped.filter(m =>
+        (m.name && m.name.toLowerCase().includes(q)) ||
+        (m.lastName && m.lastName.toLowerCase().includes(q)) ||
+        (m.email && m.email.toLowerCase().includes(q))
+      );
+    }
+
+    return mapped;
   }
 
   /**
@@ -204,6 +216,14 @@ export class GroupsService {
         action: GroupAction.JOINED,
       })
     );
+
+    // Enviar notificación de bienvenida al nuevo miembro
+    const joinerName = `${joinerPerson.name} ${joinerPerson.lastName}`;
+    await this.messagesService.sendMessage({
+      emisor_id: userId,
+      grupos_id: [groupId],
+      contenido: `👋 ¡${joinerName} se ha unido al grupo ${group.nombre}! Bienvenido/a.`,
+    });
 
     return { success: true };
   }
