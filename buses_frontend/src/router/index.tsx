@@ -43,12 +43,14 @@ import CitizenRoutes from '../pages/citizen/CitizenRoutes'
 import CitizenPurchasePage from '../pages/citizen/CitizenPurchasePage'
 import CitizenWalletPage from '../pages/citizen/CitizenWalletPage'
 import CitizenAppointments from '../pages/citizen/CitizenAppointments'
+import CitizenPqrsPage from '../pages/citizen/CitizenPqrsPage'
 
 // Pages - Conductor
 import ConductorShift from '../pages/conductor/ConductorShift'
 
 // Pages - Company Admin
 import CompanyAdminDashboard from '../pages/company-admin/CompanyAdminDashboard'
+import PqrsAdminPage from '../pages/admin/PqrsAdminPage'
 
 // Pages - Errors
 import NotFoundPage from '../pages/errors/NotFoundPage'
@@ -96,6 +98,7 @@ const AppRouter = () => {
         <Route path="/admin/companies" element={<CompaniesPage />} />
         <Route path="/admin/companies/operations" element={<CompanyOperationsPage />} />
         <Route path="/admin/live-fleet" element={<LiveFleetDashboard />} />
+        <Route path="/admin/pqrs" element={<PqrsAdminPage />} />
 
         {/* Entregable 3 - Mensajería (todos los roles) */}
         <Route path="/messages" element={<MessagesPage />} />
@@ -107,6 +110,7 @@ const AppRouter = () => {
         <Route path="/citizen/purchase" element={<CitizenPurchasePage />} />
         <Route path="/citizen/wallet" element={<CitizenWalletPage />} />
         <Route path="/citizen/support" element={<CitizenAppointments />} />
+        <Route path="/citizen/pqrs" element={<CitizenPqrsPage />} />
         <Route path="/conductor/turno" element={<ConductorShift />} />
         <Route path="/company-admin/dashboard" element={<CompanyAdminDashboard />} />
       </Route>

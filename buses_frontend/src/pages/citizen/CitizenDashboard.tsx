@@ -327,6 +327,11 @@ const CitizenDashboard = () => {
             <span className="text-2xl">🎧</span>
             <p className="text-sm text-slate-300 mt-2 group-hover:text-emerald-400 transition-colors">Atención Cliente</p>
           </button>
+          <button onClick={() => navigate('/citizen/pqrs')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl p-4 text-center transition relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-12 h-12 bg-amber-500/10 rounded-bl-full -mr-2 -mt-2"></div>
+            <span className="text-2xl">📋</span>
+            <p className="text-sm text-slate-300 mt-2 group-hover:text-amber-400 transition-colors">PQRS</p>
+          </button>
           <button onClick={() => navigate('/messages')} className="bg-slate-800 hover:bg-slate-700 border border-indigo-600/50 rounded-xl p-4 text-center transition flex flex-col items-center justify-center">
             <div className="relative inline-block">
               <span className="text-2xl">✉️</span>
@@ -385,6 +390,7 @@ const CitizenDashboard = () => {
                     {new Date(selectedTicket.fecha_compra || '').toLocaleDateString()}
                   </span>
                 </div>
+
                 <div>
                   <span className="text-slate-400 text-xs uppercase block">Hora de Salida</span>
                   <span className="font-semibold text-white">
