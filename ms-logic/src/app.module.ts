@@ -22,6 +22,7 @@ import { ReportsModule } from './reports/reports.module';
 import { PersonsModule } from './persons/persons.module';
 import { BusinessAdministratorModule } from './business_administrator/business_administrator.module';
 import { AdvisorsModule } from './advisors/advisors.module';
+import { PqrsModule } from './pqrs/pqrs.module';
 
 import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
 import { CitizenPaymentMethodsModule } from './citizen-payment-methods/citizen-payment-methods.module';
@@ -80,6 +81,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
     BusProximityAlertsModule,
     AppointmentsModule,
     AdvisorsModule,
+    PqrsModule,
   ],
 })
 export class AppModule {}
