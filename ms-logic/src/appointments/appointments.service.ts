@@ -8,8 +8,8 @@ export class AppointmentsService {
   private readonly logger = new Logger(AppointmentsService.name);
   
   // Estas URLs luego el usuario las cambiará por las reales de su n8n
-  private readonly n8nAvailabilityUrl = 'https://jhilder.app.n8n.cloud/webhook/availability';
-  private readonly n8nScheduleUrl = 'https://jhilder.app.n8n.cloud/webhook/schedule';
+  private readonly n8nAvailabilityUrl = 'http://n8n:5678/webhook/availability';
+  private readonly n8nScheduleUrl = 'http://n8n:5678/webhook/schedule';
 
   constructor(private readonly httpService: HttpService) {}
 

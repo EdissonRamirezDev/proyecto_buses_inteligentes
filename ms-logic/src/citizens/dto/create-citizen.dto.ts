@@ -10,6 +10,10 @@ export class CreateCitizenDto {
   nombres: string;
 
   @IsString()
+  @IsOptional()
+  email?: string;
+
+  @IsString()
   @IsNotEmpty()
   apellidos: string;
 
@@ -29,4 +33,11 @@ export class CreateCitizenDto {
   @Min(0)
   @IsOptional()
   saldo?: number;
+
+  @IsOptional()
+  weatherAlertsEnabled?: boolean;
+
+  @IsString()
+  @IsOptional()
+  habitualTravelTime?: string;
 }

@@ -11,6 +11,10 @@ import { persistBusPhotoUrl } from '../photos/photo-file.util';
 import { Schedule } from '../schedules/entities/schedule.entity';
 import { Shift } from '../shifts/entities/shift.entity';
 import { BusesIncident } from '../buses_incidents/entities/buses_incident.entity';
+import { Route } from '../routes/entities/route.entity';
+import { Incident } from '../incidents/entities/incident.entity';
+import { Gps } from '../gps/entities/gps.entity';
+
 
 export interface BusCapacityInfo {
   max: number;
@@ -307,5 +311,254 @@ export class BusesService {
     await this.busRepository.remove(bus);
 
     return { message: `Bus #${id} eliminado correctamente` };
+  }
+
+  async simulateTraffic(): Promise<any> {
+    const routeRepo = this.dataSource.getRepository(Route);
+    const incidentRepo = this.dataSource.getRepository(Incident);
+    const busesIncidentRepo = this.dataSource.getRepository(BusesIncident);
+    const gpsRepo = this.dataSource.getRepository(Gps);
+    const scheduleRepo = this.scheduleRepository;
+    const ticketRepo = this.ticketRepository;
+
+    const routes = await routeRepo.find({ relations: ['nodes', 'nodes.busStop'] });
+    let buses = await this.busRepository.find({ relations: ['gps'] });
+
+    if (routes.length === 0) {
+      return { message: 'No se encontraron rutas en la base de datos para simular.', simulated: 0 };
+    }
+
+    // Asegurar que existan suficientes buses simulados para cada ruta (ej: 6 buses por ruta)
+    const busesPerRoute = 6;
+    const simulatedPlates: string[] = [];
+    for (let rIdx = 0; rIdx < routes.length; rIdx++) {
+      for (let bIdx = 1; bIdx <= busesPerRoute; bIdx++) {
+        const plateIndex = rIdx * busesPerRoute + bIdx;
+        simulatedPlates.push(`SIM-${String(plateIndex).padStart(3, '0')}`);
+      }
+    }
+
+    for (const plate of simulatedPlates) {
+      const exists = buses.some(b => b.placa === plate);
+      if (!exists) {
+        const newBus = this.busRepository.create({
+          placa: plate,
+          modelo: 'Mercedes-Benz Sprinter (Simulado)',
+          capacidad: 40,
+          estado: 'activo'
+        });
+        const savedBus = await this.busRepository.save(newBus);
+        buses.push(savedBus);
+      }
+    }
+
+    const types = ['Tráfico pesado', 'Accidente de tránsito', 'Falla mecánica', 'Manifestación', 'Desvío de ruta'];
+    const severities = ['MEDIA', 'ALTA', 'CRITICA'];
+
+    let simulatedCount = 0;
+
+    for (const bus of buses) {
+      // 1. Obtener o crear schedule activo para la simulación
+      let activeSchedule = await scheduleRepo.findOne({
+        where: {
+          bus: { id: bus.id },
+          estado: In(['programado', 'en_curso']),
+        },
+        relations: ['route'],
+      });
+
+      let route = activeSchedule?.route;
+      if (!activeSchedule) {
+        // Distribuir uniformemente si es un bus simulado
+        if (bus.placa && bus.placa.startsWith('SIM-')) {
+          const simIndex = parseInt(bus.placa.replace('SIM-', ''), 10);
+          if (!isNaN(simIndex)) {
+            route = routes[(simIndex - 1) % routes.length];
+          }
+        }
+
+        if (!route) {
+          route = routes[Math.floor(Math.random() * routes.length)];
+        }
+
+        activeSchedule = scheduleRepo.create({
+          fecha: new Date(),
+          hora_salida: '12:00:00',
+          tolerancia_minutos: 999, // Identificador especial para simulación
+          es_recurrente: false,
+          estado: 'en_curso',
+          route: route,
+          bus: bus,
+        });
+        activeSchedule = await scheduleRepo.save(activeSchedule);
+      }
+
+      if (!route) continue;
+
+      // 2. Simular ocupación aleatoria (tickets activos)
+      const maxCap = this.getMaxCapacity(bus);
+      // Ocupación que a veces supera la capacidad para disparar alerta de ocupación máxima
+      const occupancy = Math.floor(Math.random() * (maxCap + 5));
+
+      // Limpiar tickets simulados previos para este schedule
+      await ticketRepo
+        .createQueryBuilder()
+        .delete()
+        .where('scheduleId = :scheduleId AND codigo_qr LIKE :prefix', {
+          scheduleId: activeSchedule.id,
+          prefix: 'SIM-QR-%',
+        })
+        .execute();
+
+      const ticketsToInsert: Ticket[] = [];
+      for (let i = 0; i < occupancy; i++) {
+        ticketsToInsert.push(
+          ticketRepo.create({
+            codigo_qr: `SIM-QR-${randomUUID().substring(0, 18).toUpperCase()}`,
+            estado: 'activo',
+            precio_pagado: 2500,
+            schedule: activeSchedule,
+          })
+        );
+      }
+      if (ticketsToInsert.length > 0) {
+        await ticketRepo.save(ticketsToInsert);
+      }
+
+      // 3. Simular ubicación GPS aleatoria cerca de un paradero de la ruta
+      const nodes = route.nodes || [];
+      let lat = 4.6097;
+      let lng = -74.0817;
+      if (nodes.length > 0) {
+        const randomNode = nodes[Math.floor(Math.random() * nodes.length)];
+        if (randomNode.busStop) {
+          // Pequeño desplazamiento aleatorio de ±0.0015
+          lat = Number(randomNode.busStop.latitud) + (Math.random() - 0.5) * 0.003;
+          lng = Number(randomNode.busStop.longitud) + (Math.random() - 0.5) * 0.003;
+        }
+      }
+
+      let gps = bus.gps;
+      if (!gps) {
+        gps = gpsRepo.create({ bus });
+      }
+      gps.latitude = lat;
+      gps.longitude = lng;
+      await gpsRepo.save(gps);
+
+      // 4. Limpiar incidentes simulados anteriores de este bus
+      const existingSimIncidents = await busesIncidentRepo
+        .createQueryBuilder('bi')
+        .innerJoinAndSelect('bi.incident', 'incident')
+        .where('bi.bus_id = :busId AND incident.description LIKE :prefix', {
+          busId: bus.id,
+          prefix: '[SIMULACION]%',
+        })
+        .getMany();
+
+      if (existingSimIncidents.length > 0) {
+        const incidentIds = existingSimIncidents.map((bi) => bi.incident!.id).filter((id): id is number => id !== undefined);
+        await busesIncidentRepo.delete(existingSimIncidents.map((bi) => bi.id!));
+        await incidentRepo.delete(incidentIds);
+      }
+
+      // 5. Simular reporte de incidente aleatorio (35% de probabilidad)
+      if (Math.random() < 0.35) {
+        const selectedType = types[Math.floor(Math.random() * types.length)];
+        const selectedSeverity = severities[Math.floor(Math.random() * severities.length)];
+
+        const incident = incidentRepo.create({
+          type: selectedType,
+          severity: selectedSeverity,
+          description: `[SIMULACION] ${selectedType} reportado automáticamente por simulación de tráfico.`,
+          date: new Date().toISOString(),
+          state: 'Abierto',
+        });
+        const savedIncident = await incidentRepo.save(incident);
+
+        const busesIncident = busesIncidentRepo.create({
+          latitude: lat,
+          longitude: lng,
+          reportDate: new Date().toISOString(),
+          bus: bus,
+          incident: savedIncident,
+        });
+        await busesIncidentRepo.save(busesIncident);
+      }
+
+      simulatedCount++;
+    }
+
+    return { message: 'Tráfico e incidentes simulados en la base de datos con éxito.', simulated: simulatedCount };
+  }
+
+  async resetSimulation(): Promise<any> {
+    // 1. Eliminar incidentes de simulación
+    const simulatedIncidents = await this.dataSource.getRepository(Incident)
+      .createQueryBuilder('i')
+      .where("i.description LIKE :pattern", { pattern: '[SIMULACION]%' })
+      .getMany();
+      
+    if (simulatedIncidents.length > 0) {
+      const incidentIds = simulatedIncidents.map(i => i.id);
+      await this.dataSource.getRepository(BusesIncident)
+        .createQueryBuilder()
+        .delete()
+        .where("incident_id IN (:...incidentIds)", { incidentIds })
+        .execute();
+        
+      await this.dataSource.getRepository(Incident)
+        .createQueryBuilder()
+        .delete()
+        .where("id IN (:...incidentIds)", { incidentIds })
+        .execute();
+    }
+    
+    // 2. Eliminar boletos simulados
+    await this.dataSource.getRepository(Ticket)
+      .createQueryBuilder()
+      .delete()
+      .where("codigo_qr LIKE :pattern", { pattern: 'SIM-QR-%' })
+      .execute();
+      
+    // 3. Eliminar programaciones simuladas creadas para la simulación
+    await this.scheduleRepository
+      .createQueryBuilder()
+      .delete()
+      .where("tolerancia_minutos = :tol", { tol: 999 })
+      .execute();
+
+    // 4. Eliminar buses simulados de la base de datos (SIM-001, SIM-002, etc.)
+    const simulatedBuses = await this.busRepository
+      .createQueryBuilder('b')
+      .where("b.placa LIKE :pattern", { pattern: 'SIM-%' })
+      .getMany();
+      
+    if (simulatedBuses.length > 0) {
+      const busIds = simulatedBuses.map(b => b.id);
+      
+      // Eliminar registros de GPS vinculados
+      await this.dataSource.getRepository(Gps)
+        .createQueryBuilder()
+        .delete()
+        .where("busId IN (:...busIds)", { busIds })
+        .execute();
+
+      // Eliminar programaciones remanentes asociadas a estos buses
+      await this.scheduleRepository
+        .createQueryBuilder()
+        .delete()
+        .where("busId IN (:...busIds)", { busIds })
+        .execute();
+        
+      // Eliminar los buses
+      await this.busRepository
+        .createQueryBuilder()
+        .delete()
+        .where("id IN (:...busIds)", { busIds })
+        .execute();
+    }
+      
+    return { message: 'Simulación de flota y tráfico restablecida con éxito.' };
   }
 }

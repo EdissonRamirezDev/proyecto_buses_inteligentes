@@ -4,7 +4,7 @@ import AdminHeader from '../../components/common/AdminHeader';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getLiveFleetStatus } from '../../services/fleetService';
+import { getLiveFleetStatus, simulateTraffic, resetSimulation } from '../../services/fleetService';
 import type { LiveFleetStatusResponse, LiveFleetBus } from '../../services/fleetService';
 
 // Fix Leaflet icon issue
@@ -32,6 +32,8 @@ const LiveFleetDashboard = () => {
   const [fleetData, setFleetData] = useState<LiveFleetStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [simulating, setSimulating] = useState(false);
+  const [resetting, setResetting] = useState(false);
   
   const mapRef = useRef<L.Map | null>(null);
 
@@ -44,6 +46,30 @@ const LiveFleetDashboard = () => {
       console.error('Error fetching fleet status', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSimulateTraffic = async () => {
+    setSimulating(true);
+    try {
+      await simulateTraffic();
+      await fetchFleetData();
+    } catch (error) {
+      console.error('Error simulating traffic', error);
+    } finally {
+      setSimulating(false);
+    }
+  };
+
+  const handleResetSimulation = async () => {
+    setResetting(true);
+    try {
+      await resetSimulation();
+      await fetchFleetData();
+    } catch (error) {
+      console.error('Error resetting simulation', error);
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -131,6 +157,20 @@ const LiveFleetDashboard = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={handleSimulateTraffic}
+              disabled={simulating || resetting}
+              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm shadow-indigo-500/25 flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {simulating ? 'Simulando...' : '⚡ Simular Tráfico'}
+            </button>
+            <button
+              onClick={handleResetSimulation}
+              disabled={simulating || resetting}
+              className="px-3.5 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {resetting ? 'Restableciendo...' : '♻️ Restablecer'}
+            </button>
             <span className="text-sm text-gray-500 dark:text-gray-400">
               Actualizado: {lastUpdate.toLocaleTimeString()}
             </span>

@@ -27,3 +27,13 @@ export const getLiveFleetStatus = async (): Promise<LiveFleetStatusResponse> => 
   const response = await httpBusiness.get<LiveFleetStatusResponse>('/buses/fleet/live');
   return response.data;
 };
+
+export const simulateTraffic = async (): Promise<any> => {
+  const response = await httpBusiness.post('/buses/fleet/simulate-traffic');
+  return response.data;
+};
+
+export const resetSimulation = async (): Promise<any> => {
+  const response = await httpBusiness.post('/buses/fleet/reset-simulation');
+  return response.data;
+};

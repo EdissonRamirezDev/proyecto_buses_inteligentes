@@ -24,6 +24,12 @@ export class Citizen {
   @Column({ type: 'date', nullable: true })
   fecha_nacimiento: string;
 
+  @Column({ type: 'boolean', default: false })
+  weatherAlertsEnabled: boolean;
+
+  @Column({ type: 'varchar', length: 5, nullable: true })
+  habitualTravelTime: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0.00 })
   saldo: number;
 

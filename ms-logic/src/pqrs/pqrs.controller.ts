@@ -15,7 +15,7 @@ export class PqrsController {
     // Llamar a N8N de forma síncrona para que genere el radicado
     let radicado = `PQRS-${pqrs.id.split('-')[0].toUpperCase()}`; // Fallback en caso de error
     try {
-      const response = await fetch('https://jhilder.app.n8n.cloud/webhook/pqrs-new', {
+      const response = await fetch('http://n8n:5678/webhook/pqrs-new', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(pqrs)
@@ -54,7 +54,7 @@ export class PqrsController {
     
     // Webhook 2: Notificar cambios de estado
     try {
-      await fetch('https://jhilder.app.n8n.cloud/webhook/pqrs-status', {
+      await fetch('http://n8n:5678/webhook/pqrs-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)

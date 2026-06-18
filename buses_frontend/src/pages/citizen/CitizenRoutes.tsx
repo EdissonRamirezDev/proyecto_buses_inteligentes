@@ -9,6 +9,8 @@ import { MapContainer, TileLayer, Marker, Polyline, Popup, CircleMarker, useMap,
 import { useAuth } from '../../hooks/useAuth';
 import { socketService } from '../../services/socketService';
 import { subscribeToAlert } from '../../services/busProximityAlertsService';
+import { simulateTraffic, resetSimulation } from '../../services/fleetService';
+
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -127,9 +129,41 @@ const CitizenRoutes = () => {
   const simIntervalRef = useRef<any>(null);
   const countdownRef = useRef<any>(null);
 
-  // Tracking real
   const [activeBuses, setActiveBuses] = useState<ActiveBus[]>([]);
   const [activeBusesEta, setActiveBusesEta] = useState<{ [busId: number]: { nearestStop: any, etaMins: number, isDelayed: boolean } }>({});
+
+  const [simulating, setSimulating] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  const handleSimulateTraffic = async () => {
+    setSimulating(true);
+    try {
+      await simulateTraffic();
+      if (selectedRoute) {
+        const buses = await getActiveBuses(selectedRoute.id);
+        setActiveBuses(buses);
+      }
+    } catch (error) {
+      console.error('Error simulating traffic', error);
+    } finally {
+      setSimulating(false);
+    }
+  };
+
+  const handleResetSimulation = async () => {
+    setResetting(true);
+    try {
+      await resetSimulation();
+      if (selectedRoute) {
+        const buses = await getActiveBuses(selectedRoute.id);
+        setActiveBuses(buses);
+      }
+    } catch (error) {
+      console.error('Error resetting simulation', error);
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const watchIdRef = useRef<number | null>(null);
   const lastNearbyCalcRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -144,11 +178,7 @@ const CitizenRoutes = () => {
       socketService.connect(user.id);
       
       const handleProximityAlert = (data: any) => {
-        setDemoAlert({
-          title: '¡Tu bus se acerca! 🚌',
-          message: data.mensaje || `El bus ${data.placa} llegará en ${data.eta_minutos} min.`
-        });
-        playNotificationSound();
+        // Enviar notificación del sistema sin interrumpir la interfaz del usuario con un modal invasivo
         if ("Notification" in window && Notification.permission === 'granted') {
           new Notification('¡Tu bus se acerca! 🚌', {
             body: data.mensaje,
@@ -277,6 +307,7 @@ const CitizenRoutes = () => {
             });
             
             let etaMins = 0;
+            let etaLabel = 'En ruta';
             if (userLocation && nearestNodeIdx !== -1) {
               let userNearestNodeIdx = -1;
               let userMinDist = Infinity;
@@ -289,14 +320,27 @@ const CitizenRoutes = () => {
               });
               
               if (userNearestNodeIdx > nearestNodeIdx) {
-                for(let i = nearestNodeIdx + 1; i <= userNearestNodeIdx; i++) {
+                for (let i = nearestNodeIdx + 1; i <= userNearestNodeIdx; i++) {
                   etaMins += routeNodes[i].tiempo_estimado || 2; 
                 }
+                etaLabel = `Llega a tu parada en ~${etaMins} min`;
+              } else if (userNearestNodeIdx === nearestNodeIdx) {
+                etaMins = 0;
+                etaLabel = 'En tu parada 🌟';
               } else {
                 etaMins = -1;
+                etaLabel = 'Ya pasó';
               }
-            } else {
-              etaMins = routeNodes[nearestNodeIdx + 1]?.tiempo_estimado || 2;
+            } else if (nearestNodeIdx !== -1) {
+              if (nearestNodeIdx === routeNodes.length - 1) {
+                etaMins = 0;
+                etaLabel = 'Fin de recorrido';
+              } else {
+                const nextNode = routeNodes[nearestNodeIdx + 1];
+                const nextStopName = nextNode?.busStop?.nombre || 'Siguiente parada';
+                etaMins = nextNode?.tiempo_estimado || 2;
+                etaLabel = `Llega a: ${nextStopName} en ~${etaMins} min`;
+              }
             }
             
             let isDelayed = false;
@@ -312,7 +356,7 @@ const CitizenRoutes = () => {
               }
             }
             
-            newEtas[bus.busId] = { nearestStop, etaMins, isDelayed };
+            newEtas[bus.busId] = { nearestStop, etaMins, etaLabel, isDelayed };
           });
           
           setActiveBusesEta(newEtas);
@@ -495,79 +539,128 @@ const CitizenRoutes = () => {
     setDemoAlert(null);
   }, []);
 
-  const startBusSimulation = useCallback((routeForSim: any, stopName: string, routeName: string) => {
+  const startBusSimulation = useCallback((routeForSim: any, targetStop: any, routeName: string) => {
     stopSimulation();
-    const nodes = (routeForSim.nodes || []).filter((n: any) => n.busStop?.latitud && n.busStop?.longitud).sort((a: any, b: any) => (a.orden || 0) - (b.orden || 0));
-    if (nodes.length < 2) return;
-    
-    const positions: [number, number][] = nodes.map((n: any) => [Number(n.busStop.latitud), Number(n.busStop.longitud)]);
-    
-    // Interpolar más puntos para movimiento suave
-    const interpolated: [number, number][] = [];
-    for (let i = 0; i < positions.length - 1; i++) {
-      const steps = 8;
-      for (let s = 0; s <= steps; s++) {
-        const t = s / steps;
-        interpolated.push([
-          positions[i][0] + (positions[i + 1][0] - positions[i][0]) * t,
-          positions[i][1] + (positions[i + 1][1] - positions[i][1]) * t
-        ]);
-      }
+    const routeNodes = (routeForSim.nodes || [])
+      .filter((n: any) => n.busStop?.latitud && n.busStop?.longitud)
+      .sort((a: any, b: any) => (a.orden || 0) - (b.orden || 0));
+    if (routeNodes.length < 2) return;
+
+    let targetNodeIdx = routeNodes.findIndex((n: any) => n.busStop?.id === targetStop.id);
+    if (targetNodeIdx === -1) {
+      targetNodeIdx = routeNodes.findIndex((n: any) => n.busStop?.nombre === targetStop.nombre);
     }
-    interpolated.push(positions[positions.length - 1]);
+    if (targetNodeIdx === -1) return;
 
-    setDemoActive(true);
-    setDemoRouteName(routeName);
-    setDemoStopName(stopName);
-    setSimulatedBusPosition(interpolated[0]);
-    setSelectedRoute(routeForSim);
+    // Calcular parada inicial retrocediendo según notifyMinutes
+    let startNodeIdx = targetNodeIdx;
+    let accumulatedMinutes = 0;
+    while (startNodeIdx > 0 && accumulatedMinutes < notifyMinutes) {
+      const nextBackVal = routeNodes[startNodeIdx].tiempo_estimado || 2;
+      accumulatedMinutes += nextBackVal;
+      startNodeIdx--;
+    }
 
-    const TOTAL_SECONDS = 10;
-    setDemoCountdown(TOTAL_SECONDS);
-    
-    // Countdown
-    let secsLeft = TOTAL_SECONDS;
-    countdownRef.current = setInterval(() => {
-      secsLeft--;
-      setDemoCountdown(secsLeft);
-      if (secsLeft <= 0) {
-        clearInterval(countdownRef.current);
-      }
-    }, 1000);
-
-    // Mover bus
-    let idx = 0;
-    const stepTime = (TOTAL_SECONDS * 1000) / interpolated.length;
-    simIntervalRef.current = setInterval(() => {
-      idx++;
-      if (idx >= interpolated.length) {
-        clearInterval(simIntervalRef.current);
-        setSimulatedBusPosition(interpolated[interpolated.length - 1]);
-        
-        // Mostrar alerta en UI garantizada
-        setDemoAlert({
-          title: '¡Tu bus se acerca! 🚌',
-          message: `El bus de la ruta ${routeName} está a unos ${notifyMinutes} minutos de llegar al paradero ${stopName}. ¡Ve preparándote!`
-        });
-
-        playNotificationSound();
-
-        // Intentar disparar notificación OS si tiene permisos
-        if ("Notification" in window && Notification.permission === 'granted') {
-          new Notification('¡Tu bus se acerca! 🚌', {
-            body: `El bus de la ruta ${routeName} está a unos ${notifyMinutes} minutos de llegar al paradero ${stopName}. ¡Ve preparándote!`,
-            icon: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png'
-          });
+    const runSim = async () => {
+      setIsMapLoading(true);
+      let pathPositions: [number, number][] = [];
+      try {
+        const coords: string[] = [];
+        for (let i = startNodeIdx; i <= targetNodeIdx; i++) {
+          const node = routeNodes[i];
+          coords.push(`${Number(node.busStop.longitud)},${Number(node.busStop.latitud)}`);
+          if (node.via_points && node.via_points.length > 0 && i < targetNodeIdx) {
+            node.via_points.forEach((vp: [number, number]) => {
+              coords.push(`${vp[1]},${vp[0]}`);
+            });
+          }
         }
-        return;
+        const coordinatesString = coords.join(';');
+        const url = `https://router.project-osrm.org/route/v1/driving/${coordinatesString}?overview=full&geometries=geojson`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.code === 'Ok' && data.routes.length > 0) {
+          pathPositions = data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
+        }
+      } catch (err) {
+        console.error("Error fetching simulation path:", err);
+      } finally {
+        setIsMapLoading(false);
       }
-      setSimulatedBusPosition(interpolated[idx]);
-    }, stepTime);
-  }, [stopSimulation]);
+
+      // Fallback si falla OSRM: interpolar linealmente entre paradas
+      if (pathPositions.length === 0) {
+        const segmentNodes = routeNodes.slice(startNodeIdx, targetNodeIdx + 1);
+        const stopCoords: [number, number][] = segmentNodes.map((n: any) => [Number(n.busStop.latitud), Number(n.busStop.longitud)]);
+        for (let i = 0; i < stopCoords.length - 1; i++) {
+          const steps = 10;
+          for (let s = 0; s < steps; s++) {
+            const t = s / steps;
+            pathPositions.push([
+              stopCoords[i][0] + (stopCoords[i+1][0] - stopCoords[i][0]) * t,
+              stopCoords[i][1] + (stopCoords[i+1][1] - stopCoords[i][1]) * t
+            ]);
+          }
+        }
+        pathPositions.push(stopCoords[stopCoords.length - 1]);
+      }
+
+      if (pathPositions.length < 2) return;
+
+      setDemoActive(true);
+      setDemoRouteName(routeName);
+      setDemoStopName(targetStop.nombre);
+      setSimulatedBusPosition(pathPositions[0]);
+      setSelectedRoute(routeForSim);
+
+      const TOTAL_SECONDS = 10;
+      setDemoCountdown(notifyMinutes);
+
+      // Countdown en minutos
+      let secondsElapsed = 0;
+      countdownRef.current = setInterval(() => {
+        secondsElapsed++;
+        const minutesLeft = Math.ceil(notifyMinutes * (1 - secondsElapsed / TOTAL_SECONDS));
+        setDemoCountdown(Math.max(0, minutesLeft));
+        if (secondsElapsed >= TOTAL_SECONDS) {
+          clearInterval(countdownRef.current);
+        }
+      }, 1000);
+
+      // Mover bus a lo largo de la ruta detallada
+      let idx = 0;
+      const stepTime = (TOTAL_SECONDS * 1000) / pathPositions.length;
+      simIntervalRef.current = setInterval(() => {
+        idx++;
+        if (idx >= pathPositions.length) {
+          clearInterval(simIntervalRef.current);
+          setSimulatedBusPosition(pathPositions[pathPositions.length - 1]);
+          
+          setDemoAlert({
+            title: '¡Tu bus se acerca! 🚌',
+            message: `El bus de la ruta ${routeName} está a unos ${notifyMinutes} minutos de llegar al paradero ${targetStop.nombre}. ¡Ve preparándote!`
+          });
+
+          playNotificationSound();
+
+          if ("Notification" in window && Notification.permission === 'granted') {
+            new Notification('¡Tu bus se acerca! 🚌', {
+              body: `El bus de la ruta ${routeName} está a unos ${notifyMinutes} minutos de llegar al paradero ${targetStop.nombre}. ¡Ve preparándote!`,
+              icon: 'https://cdn-icons-png.flaticon.com/512/3448/3448339.png'
+            });
+          }
+          return;
+        }
+        setSimulatedBusPosition(pathPositions[idx]);
+      }, stepTime);
+    };
+
+    runSim();
+  }, [stopSimulation, notifyMinutes]);
 
   const scheduleNotification = async (stop: any, route: any, isSimulation: boolean = false) => {
     if (isSimulation) {
-      startBusSimulation(route, stop.nombre, route.nombre);
+      startBusSimulation(route, stop, route.nombre);
       return;
     }
 
@@ -623,9 +716,25 @@ const CitizenRoutes = () => {
             <h1 className="text-2xl font-bold text-white">Rutas y Paraderos</h1>
             <p className="text-blue-100 text-sm opacity-90">Consulta rutas y encuentra tu paradero más cercano</p>
           </div>
-          <Button onClick={() => navigate('/citizen/dashboard')} className="bg-white/20 hover:bg-white/30 backdrop-blur-sm shadow-sm transition-all border border-white/10">
-            ← Mi Panel
-          </Button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSimulateTraffic}
+              disabled={simulating || resetting}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {simulating ? 'Simulando...' : '⚡ Simular Tráfico'}
+            </button>
+            <button
+              onClick={handleResetSimulation}
+              disabled={simulating || resetting}
+              className="bg-slate-700 hover:bg-slate-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {resetting ? 'Restableciendo...' : '♻️ Restablecer'}
+            </button>
+            <Button onClick={() => navigate('/citizen/dashboard')} className="bg-white/20 hover:bg-white/30 backdrop-blur-sm shadow-sm transition-all border border-white/10">
+              ← Mi Panel
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -767,8 +876,9 @@ const CitizenRoutes = () => {
                     <div className="mt-3 bg-gradient-to-r from-indigo-900/60 to-purple-900/60 p-3 rounded-xl border border-indigo-500/40 animate-pulse-slow">
                       <div className="flex items-center gap-3">
                         <div className="relative">
-                          <div className="w-10 h-10 rounded-full bg-indigo-500/20 border-2 border-indigo-400 flex items-center justify-center">
-                            <span className="text-lg font-black text-indigo-300">{demoCountdown}</span>
+                          <div className="w-12 h-12 rounded-full bg-indigo-500/20 border-2 border-indigo-400 flex flex-col items-center justify-center">
+                            <span className="text-base font-black text-indigo-300 leading-none">{demoCountdown}</span>
+                            <span className="text-[8px] uppercase font-bold text-indigo-400 mt-0.5">min</span>
                           </div>
                         </div>
                         <div className="flex-1">
@@ -860,13 +970,9 @@ const CitizenRoutes = () => {
                         </div>
                         <div className="text-right">
                           {info?.isDelayed && <div className="text-[10px] text-rose-400 font-bold bg-rose-500/10 px-2 py-0.5 rounded mb-1 inline-block">⚠️ Retrasado</div>}
-                          {info?.etaMins > 0 ? (
-                            <div className="text-xs text-emerald-400 font-bold">Llega en ~{info.etaMins} min</div>
-                          ) : info?.etaMins === -1 ? (
-                            <div className="text-[10px] text-slate-500">Ya pasó</div>
-                          ) : (
-                            <div className="text-[10px] text-slate-500">En ruta</div>
-                          )}
+                          <div className={`text-xs font-bold ${info?.etaLabel === 'Ya pasó' ? 'text-slate-500' : info?.etaLabel === 'Fin de recorrido' ? 'text-blue-400' : 'text-emerald-400'}`}>
+                            {info?.etaLabel}
+                          </div>
                         </div>
                       </div>
                     )
@@ -953,11 +1059,9 @@ const CitizenRoutes = () => {
                     <div className="text-center font-bold">
                       <div className="text-sm text-indigo-600 mb-1">Bus {bus.placa}</div>
                       <div className="text-xs text-slate-600">Paradero cercano: {activeBusesEta[bus.busId]?.nearestStop?.nombre || 'N/A'}</div>
-                      {activeBusesEta[bus.busId]?.etaMins > 0 ? (
-                        <div className="text-xs text-emerald-600 font-bold mt-1">Llega en ~{activeBusesEta[bus.busId]?.etaMins} min</div>
-                      ) : activeBusesEta[bus.busId]?.etaMins === -1 ? (
-                         <div className="text-xs text-slate-500 font-bold mt-1">El bus ya pasó o va en otro sentido</div>
-                      ) : null}
+                      <div className="text-xs text-emerald-600 font-bold mt-1">
+                        {activeBusesEta[bus.busId]?.etaLabel}
+                      </div>
                       {activeBusesEta[bus.busId]?.isDelayed && (
                         <div className="text-xs text-rose-600 font-bold mt-1 bg-rose-100 px-2 py-1 rounded">⚠️ Bus retrasado</div>
                       )}
