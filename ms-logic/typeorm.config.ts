@@ -17,7 +17,7 @@ const dataSource = new DataSource({
     'dist/migrations/*.js',
     'dist/database/migrations/*.js',
   ],
-  synchronize: false,
+  synchronize: true,
 });
 
 export default dataSource;

@@ -6,6 +6,8 @@ import Modal from '../../components/common/Modal'
 import UserForm from '../../components/admin/UserForm'
 import Button from '../../components/common/Button'
 import AdminHeader from '../../components/common/AdminHeader'
+import * as userService from '../../services/userService'
+import * as personService from '../../services/personService'
 
 /**
  * UsersPage orquesta la gestión de usuarios
@@ -18,11 +20,37 @@ const UsersPage = () => {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
+  const [isSyncing, setIsSyncing] = useState(false)
+
   const handleSuccess = () => {
     setRefreshTrigger((prev) => prev + 1)
     setUserToAssign(null)
     setUserToEdit(null)
     setShowCreateForm(false)
+  }
+
+  const handleSyncAll = async () => {
+    try {
+      setIsSyncing(true)
+      const users = await userService.getUsers()
+      for (const u of users) {
+        const nameParts = u.name ? u.name.split(' ') : ['Usuario', 'Sistema']
+        const name = nameParts[0]
+        const lastName = nameParts.slice(1).join(' ') || 'Sistema'
+        await personService.syncPerson({
+          userId: u.id,
+          name,
+          lastName,
+          email: u.email,
+        })
+      }
+      alert(`¡Éxito! Se sincronizaron ${users.length} usuarios con la base de datos de chat/mensajes.`)
+    } catch (error) {
+      console.error('Error sincronizando usuarios:', error)
+      alert('Hubo un error al sincronizar los usuarios.')
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
   const isFormOpen = showCreateForm || !!userToEdit
@@ -41,16 +69,30 @@ const UsersPage = () => {
             setShowCreateForm(false)
           }}
           action={!isFormOpen && (
-            <Button
-              onClick={() => setShowCreateForm(true)}
-              leftIcon={
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              }
-            >
-              Nuevo usuario
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                onClick={handleSyncAll}
+                isLoading={isSyncing}
+                leftIcon={
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                }
+              >
+                Sincronizar Todos
+              </Button>
+              <Button
+                onClick={() => setShowCreateForm(true)}
+                leftIcon={
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                }
+              >
+                Nuevo usuario
+              </Button>
+            </div>
           )}
         />
 
