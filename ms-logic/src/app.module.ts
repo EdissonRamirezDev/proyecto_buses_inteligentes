@@ -48,7 +48,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
         password: configService.get<string>('DB_PASS'),
         database: configService.get<string>('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: false, // Usaremos migraciones
+        synchronize: true, // Auto-create tables for Docker
       }),
     }),
     BusesModule,
