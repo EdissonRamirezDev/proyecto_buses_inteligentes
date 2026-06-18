@@ -254,11 +254,7 @@ const ProfilePage = () => {
         </div>
 
         {/* Weather Alerts Preferences (Citizens Only) */}
-<<<<<<< Updated upstream
-        {user?.roles?.some(r => r.name === 'Ciudadano') && (
-=======
         {user?.roles?.some(r => r.name?.toUpperCase() === 'CIUDADANO') && (
->>>>>>> Stashed changes
           <WeatherAlertsCard userId={user.id} />
         )}
       </main>
@@ -275,11 +271,7 @@ function WeatherAlertsCard({ userId }: { userId: string }) {
   const [time, setTime] = useState('07:00')
   const [msg, setMsg] = useState<{type: 'success'|'error', text: string} | null>(null)
 
-<<<<<<< Updated upstream
-  useState(() => {
-=======
   useEffect(() => {
->>>>>>> Stashed changes
     import('../../services/citizensService').then(({ findCitizenByUserId }) => {
       findCitizenByUserId(userId).then(citizen => {
         if (citizen) {
@@ -290,11 +282,7 @@ function WeatherAlertsCard({ userId }: { userId: string }) {
         setLoading(false)
       }).catch(() => setLoading(false))
     })
-<<<<<<< Updated upstream
-  })
-=======
   }, [userId])
->>>>>>> Stashed changes
 
   const handleSave = async () => {
     if (!citizenId) return
@@ -370,8 +358,4 @@ function WeatherAlertsCard({ userId }: { userId: string }) {
   )
 }
 
-<<<<<<< Updated upstream
-export default ProfilePage
-=======
 export default ProfilePage;
->>>>>>> Stashed changes

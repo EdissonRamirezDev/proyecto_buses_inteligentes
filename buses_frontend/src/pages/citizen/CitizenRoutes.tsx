@@ -178,11 +178,7 @@ const CitizenRoutes = () => {
       socketService.connect(user.id);
       
       const handleProximityAlert = (data: any) => {
-        setDemoAlert({
-          title: '¡Tu bus se acerca! 🚌',
-          message: data.mensaje || `El bus ${data.placa} llegará en ${data.eta_minutos} min.`
-        });
-        playNotificationSound();
+        // Enviar notificación del sistema sin interrumpir la interfaz del usuario con un modal invasivo
         if ("Notification" in window && Notification.permission === 'granted') {
           new Notification('¡Tu bus se acerca! 🚌', {
             body: data.mensaje,
@@ -311,6 +307,7 @@ const CitizenRoutes = () => {
             });
             
             let etaMins = 0;
+            let etaLabel = 'En ruta';
             if (userLocation && nearestNodeIdx !== -1) {
               let userNearestNodeIdx = -1;
               let userMinDist = Infinity;
@@ -323,14 +320,27 @@ const CitizenRoutes = () => {
               });
               
               if (userNearestNodeIdx > nearestNodeIdx) {
-                for(let i = nearestNodeIdx + 1; i <= userNearestNodeIdx; i++) {
+                for (let i = nearestNodeIdx + 1; i <= userNearestNodeIdx; i++) {
                   etaMins += routeNodes[i].tiempo_estimado || 2; 
                 }
+                etaLabel = `Llega a tu parada en ~${etaMins} min`;
+              } else if (userNearestNodeIdx === nearestNodeIdx) {
+                etaMins = 0;
+                etaLabel = 'En tu parada 🌟';
               } else {
                 etaMins = -1;
+                etaLabel = 'Ya pasó';
               }
-            } else {
-              etaMins = routeNodes[nearestNodeIdx + 1]?.tiempo_estimado || 2;
+            } else if (nearestNodeIdx !== -1) {
+              if (nearestNodeIdx === routeNodes.length - 1) {
+                etaMins = 0;
+                etaLabel = 'Fin de recorrido';
+              } else {
+                const nextNode = routeNodes[nearestNodeIdx + 1];
+                const nextStopName = nextNode?.busStop?.nombre || 'Siguiente parada';
+                etaMins = nextNode?.tiempo_estimado || 2;
+                etaLabel = `Llega a: ${nextStopName} en ~${etaMins} min`;
+              }
             }
             
             let isDelayed = false;
@@ -346,7 +356,7 @@ const CitizenRoutes = () => {
               }
             }
             
-            newEtas[bus.busId] = { nearestStop, etaMins, isDelayed };
+            newEtas[bus.busId] = { nearestStop, etaMins, etaLabel, isDelayed };
           });
           
           setActiveBusesEta(newEtas);
@@ -960,13 +970,9 @@ const CitizenRoutes = () => {
                         </div>
                         <div className="text-right">
                           {info?.isDelayed && <div className="text-[10px] text-rose-400 font-bold bg-rose-500/10 px-2 py-0.5 rounded mb-1 inline-block">⚠️ Retrasado</div>}
-                          {info?.etaMins > 0 ? (
-                            <div className="text-xs text-emerald-400 font-bold">Llega en ~{info.etaMins} min</div>
-                          ) : info?.etaMins === -1 ? (
-                            <div className="text-[10px] text-slate-500">Ya pasó</div>
-                          ) : (
-                            <div className="text-[10px] text-slate-500">En ruta</div>
-                          )}
+                          <div className={`text-xs font-bold ${info?.etaLabel === 'Ya pasó' ? 'text-slate-500' : info?.etaLabel === 'Fin de recorrido' ? 'text-blue-400' : 'text-emerald-400'}`}>
+                            {info?.etaLabel}
+                          </div>
                         </div>
                       </div>
                     )
@@ -1053,11 +1059,9 @@ const CitizenRoutes = () => {
                     <div className="text-center font-bold">
                       <div className="text-sm text-indigo-600 mb-1">Bus {bus.placa}</div>
                       <div className="text-xs text-slate-600">Paradero cercano: {activeBusesEta[bus.busId]?.nearestStop?.nombre || 'N/A'}</div>
-                      {activeBusesEta[bus.busId]?.etaMins > 0 ? (
-                        <div className="text-xs text-emerald-600 font-bold mt-1">Llega en ~{activeBusesEta[bus.busId]?.etaMins} min</div>
-                      ) : activeBusesEta[bus.busId]?.etaMins === -1 ? (
-                         <div className="text-xs text-slate-500 font-bold mt-1">El bus ya pasó o va en otro sentido</div>
-                      ) : null}
+                      <div className="text-xs text-emerald-600 font-bold mt-1">
+                        {activeBusesEta[bus.busId]?.etaLabel}
+                      </div>
                       {activeBusesEta[bus.busId]?.isDelayed && (
                         <div className="text-xs text-rose-600 font-bold mt-1 bg-rose-100 px-2 py-1 rounded">⚠️ Bus retrasado</div>
                       )}

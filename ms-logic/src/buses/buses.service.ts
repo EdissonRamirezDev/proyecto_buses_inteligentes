@@ -328,8 +328,16 @@ export class BusesService {
       return { message: 'No se encontraron rutas en la base de datos para simular.', simulated: 0 };
     }
 
-    // Asegurar que existan al menos 4 buses en la base de datos para simular una flota viva
-    const simulatedPlates = ['SIM-001', 'SIM-002', 'SIM-003', 'SIM-004'];
+    // Asegurar que existan suficientes buses simulados para cada ruta (ej: 6 buses por ruta)
+    const busesPerRoute = 6;
+    const simulatedPlates: string[] = [];
+    for (let rIdx = 0; rIdx < routes.length; rIdx++) {
+      for (let bIdx = 1; bIdx <= busesPerRoute; bIdx++) {
+        const plateIndex = rIdx * busesPerRoute + bIdx;
+        simulatedPlates.push(`SIM-${String(plateIndex).padStart(3, '0')}`);
+      }
+    }
+
     for (const plate of simulatedPlates) {
       const exists = buses.some(b => b.placa === plate);
       if (!exists) {
@@ -361,8 +369,18 @@ export class BusesService {
 
       let route = activeSchedule?.route;
       if (!activeSchedule) {
-        // Asignar ruta aleatoria
-        route = routes[Math.floor(Math.random() * routes.length)];
+        // Distribuir uniformemente si es un bus simulado
+        if (bus.placa && bus.placa.startsWith('SIM-')) {
+          const simIndex = parseInt(bus.placa.replace('SIM-', ''), 10);
+          if (!isNaN(simIndex)) {
+            route = routes[(simIndex - 1) % routes.length];
+          }
+        }
+
+        if (!route) {
+          route = routes[Math.floor(Math.random() * routes.length)];
+        }
+
         activeSchedule = scheduleRepo.create({
           fecha: new Date(),
           hora_salida: '12:00:00',

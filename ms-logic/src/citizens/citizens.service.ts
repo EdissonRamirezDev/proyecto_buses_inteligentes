@@ -30,10 +30,8 @@ export class CitizensService {
       direccion: citizen.direccion,
       fecha_nacimiento: citizen.fecha_nacimiento,
       saldo: Number(citizen.saldo),
-<<<<<<< Updated upstream
       weatherAlertsEnabled: citizen.weatherAlertsEnabled,
       habitualTravelTime: citizen.habitualTravelTime,
-=======
       person: citizen.person ? {
         id: citizen.person.id,
         userId: citizen.person.userId,
@@ -42,7 +40,6 @@ export class CitizensService {
         email: citizen.person.email,
         phone: citizen.person.phone,
       } : null,
->>>>>>> Stashed changes
     };
   }
 
