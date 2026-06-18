@@ -22,6 +22,16 @@ export class BusesController {
     return this.busesService.getLiveFleetStatus();
   }
 
+  @Post('fleet/simulate-traffic')
+  simulateTraffic() {
+    return this.busesService.simulateTraffic();
+  }
+
+  @Post('fleet/reset-simulation')
+  resetSimulation() {
+    return this.busesService.resetSimulation();
+  }
+
   @Get(':id/capacity')
   getCapacity(@Param('id') id: string) {
     return this.busesService.syncCapacityFromTickets(+id);

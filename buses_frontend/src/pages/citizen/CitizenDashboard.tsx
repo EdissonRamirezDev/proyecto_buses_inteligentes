@@ -144,6 +144,7 @@ const CitizenDashboard = () => {
               userId: user.id,
               nombres,
               apellidos,
+              email: user.email,
               telefono: '',
               direccion: 'Sin dirección registrada',
               fecha_nacimiento: new Date().toISOString().split('T')[0]

@@ -10,6 +10,10 @@ export class CreateCitizenDto {
   nombres: string;
 
   @IsString()
+  @IsOptional()
+  email?: string;
+
+  @IsString()
   @IsNotEmpty()
   apellidos: string;
 

@@ -3,6 +3,7 @@ export interface CitizenPerson {
   name?: string;
   lastName?: string;
   phone?: string;
+  email?: string;
 }
 
 export interface Citizen {
@@ -11,6 +12,7 @@ export interface Citizen {
   person?: CitizenPerson;
   nombres: string;
   apellidos: string;
+  email?: string;
   telefono?: string;
   direccion?: string;
   fecha_nacimiento?: string;

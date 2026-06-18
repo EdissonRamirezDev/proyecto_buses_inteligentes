@@ -62,6 +62,7 @@ const CompleteProfilePage = () => {
             userId: user.id,
             nombres: nombres,
             apellidos: apellidos,
+            email: user.email,
             telefono: data.phone || '',
             direccion: data.address,
             fecha_nacimiento: new Date().toISOString().split('T')[0]

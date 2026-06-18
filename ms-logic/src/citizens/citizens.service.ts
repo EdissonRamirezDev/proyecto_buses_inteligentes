@@ -23,14 +23,26 @@ export class CitizensService {
     return {
       id: citizen.id,
       userId: citizen.person?.userId,
+      email: citizen.person?.email,
       nombres: citizen.person?.name ?? '',
       apellidos: citizen.person?.lastName ?? '',
       telefono: citizen.person?.phone,
       direccion: citizen.direccion,
       fecha_nacimiento: citizen.fecha_nacimiento,
       saldo: Number(citizen.saldo),
+<<<<<<< Updated upstream
       weatherAlertsEnabled: citizen.weatherAlertsEnabled,
       habitualTravelTime: citizen.habitualTravelTime,
+=======
+      person: citizen.person ? {
+        id: citizen.person.id,
+        userId: citizen.person.userId,
+        name: citizen.person.name,
+        lastName: citizen.person.lastName,
+        email: citizen.person.email,
+        phone: citizen.person.phone,
+      } : null,
+>>>>>>> Stashed changes
     };
   }
 
@@ -44,15 +56,50 @@ export class CitizensService {
         userId: createCitizenDto.userId,
         name: createCitizenDto.nombres,
         lastName: createCitizenDto.apellidos,
+        email: createCitizenDto.email,
         phone: createCitizenDto.telefono,
       });
       person = await this.personRepository.save(person);
     } else {
+      let personUpdated = false;
+      if (createCitizenDto.email && person.email !== createCitizenDto.email) {
+        person.email = createCitizenDto.email;
+        personUpdated = true;
+      }
+      if (createCitizenDto.nombres && person.name !== createCitizenDto.nombres) {
+        person.name = createCitizenDto.nombres;
+        personUpdated = true;
+      }
+      if (createCitizenDto.apellidos && person.lastName !== createCitizenDto.apellidos) {
+        person.lastName = createCitizenDto.apellidos;
+        personUpdated = true;
+      }
+      if (createCitizenDto.telefono && person.phone !== createCitizenDto.telefono) {
+        person.phone = createCitizenDto.telefono;
+        personUpdated = true;
+      }
+      if (personUpdated) {
+        person = await this.personRepository.save(person);
+      }
+
       const existing = await this.citizenRepository.findOne({
         where: { person: { id: person.id } },
         relations: ['person'],
       });
       if (existing) {
+        let citizenUpdated = false;
+        if (createCitizenDto.direccion && existing.direccion !== createCitizenDto.direccion) {
+          existing.direccion = createCitizenDto.direccion;
+          citizenUpdated = true;
+        }
+        if (createCitizenDto.fecha_nacimiento && existing.fecha_nacimiento !== createCitizenDto.fecha_nacimiento) {
+          existing.fecha_nacimiento = createCitizenDto.fecha_nacimiento;
+          citizenUpdated = true;
+        }
+        if (citizenUpdated) {
+          const savedExisting = await this.citizenRepository.save(existing);
+          return this.mapCitizenToResponse(savedExisting);
+        }
         return this.mapCitizenToResponse(existing);
       }
     }

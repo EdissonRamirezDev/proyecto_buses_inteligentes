@@ -12,7 +12,7 @@ const CitizensPage = () => {
   const [securityUsers, setSecurityUsers] = useState<User[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [editingCitizen, setEditingCitizen] = useState<Citizen | null>(null);
-  const [formData, setFormData] = useState({ userId: '', nombres: '', apellidos: '', telefono: '', direccion: '', fecha_nacimiento: '' });
+  const [formData, setFormData] = useState({ userId: '', email: '', nombres: '', apellidos: '', telefono: '', direccion: '', fecha_nacimiento: '' });
   const [rechargeData, setRechargeData] = useState<{ id: string; amount: number } | null>(null);
 
   const fetchData = async () => {
@@ -29,7 +29,7 @@ const CitizensPage = () => {
   useEffect(() => { fetchData(); }, []);
 
   const resetForm = () => {
-    setFormData({ userId: '', nombres: '', apellidos: '', telefono: '', direccion: '', fecha_nacimiento: '' });
+    setFormData({ userId: '', email: '', nombres: '', apellidos: '', telefono: '', direccion: '', fecha_nacimiento: '' });
     setIsCreating(false);
     setEditingCitizen(null);
   };
@@ -53,6 +53,7 @@ const CitizensPage = () => {
     setEditingCitizen(citizen);
     setFormData({
       userId: citizen.userId || '',
+      email: citizen.email || citizen.person?.email || '',
       nombres: citizen.nombres,
       apellidos: citizen.apellidos,
       telefono: citizen.telefono || '',
@@ -71,12 +72,13 @@ const CitizensPage = () => {
         setFormData({
           ...formData,
           userId: selectedUserId,
+          email: user.email || '',
           nombres: partes[0] || '',
           apellidos: partes.slice(1).join(' ') || ''
         });
       }
     } else {
-      setFormData({ ...formData, userId: '' });
+      setFormData({ ...formData, userId: '', email: '' });
     }
   };
 
@@ -159,6 +161,10 @@ const CitizensPage = () => {
             <div>
                <label className="block text-sm font-medium text-slate-400 mb-1">Teléfono</label>
                <input type="text" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-3" />
+            </div>
+            <div>
+               <label className="block text-sm font-medium text-slate-400 mb-1">Correo Electrónico</label>
+               <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full bg-slate-700 border-slate-600 text-white rounded-lg p-3" />
             </div>
             <div>
                <label className="block text-sm font-medium text-slate-400 mb-1">Dirección (Residencia)</label>
