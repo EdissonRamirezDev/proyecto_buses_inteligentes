@@ -25,3 +25,8 @@ export const updateCitizen = async (id: string, data: Partial<Citizen>): Promise
 export const deleteCitizen = async (id: string): Promise<void> => {
   await httpBusiness.delete(`/citizens/${id}`);
 };
+
+export const updateWeatherAlerts = async (id: string, data: { weatherAlertsEnabled: boolean; habitualTravelTime: string }): Promise<Citizen> => {
+  const response = await httpBusiness.patch<Citizen>(`/citizens/${id}/weather-alerts`, data);
+  return response.data;
+};

@@ -17,9 +17,22 @@ export class CitizensController {
     return this.citizensService.findAll();
   }
 
+  @Get('weather-subscribers')
+  getWeatherSubscribers() {
+    return this.citizensService.getWeatherSubscribers();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.citizensService.findOne(id);
+  }
+
+  @Patch(':id/weather-alerts')
+  updateWeatherAlerts(
+    @Param('id') id: string,
+    @Body() body: { weatherAlertsEnabled: boolean; habitualTravelTime: string }
+  ) {
+    return this.citizensService.update(id, body);
   }
 
   @Patch(':id')

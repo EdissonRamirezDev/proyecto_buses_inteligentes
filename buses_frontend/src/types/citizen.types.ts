@@ -15,6 +15,8 @@ export interface Citizen {
   direccion?: string;
   fecha_nacimiento?: string;
   saldo: number;
+  weatherAlertsEnabled?: boolean;
+  habitualTravelTime?: string;
 }
 
 /** userId plano o anidado en person (respuestas antiguas del API). */

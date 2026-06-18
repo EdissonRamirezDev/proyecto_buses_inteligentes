@@ -29,4 +29,11 @@ export class CreateCitizenDto {
   @Min(0)
   @IsOptional()
   saldo?: number;
+
+  @IsOptional()
+  weatherAlertsEnabled?: boolean;
+
+  @IsString()
+  @IsOptional()
+  habitualTravelTime?: string;
 }

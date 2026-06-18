@@ -29,6 +29,8 @@ export class CitizensService {
       direccion: citizen.direccion,
       fecha_nacimiento: citizen.fecha_nacimiento,
       saldo: Number(citizen.saldo),
+      weatherAlertsEnabled: citizen.weatherAlertsEnabled,
+      habitualTravelTime: citizen.habitualTravelTime,
     };
   }
 
@@ -83,6 +85,14 @@ export class CitizensService {
     return this.mapCitizenToResponse(citizen);
   }
 
+  async getWeatherSubscribers() {
+    const citizens = await this.citizenRepository.find({
+      where: { weatherAlertsEnabled: true },
+      relations: ['person']
+    });
+    return citizens.map((c) => this.mapCitizenToResponse(c));
+  }
+
   async update(id: string, updateCitizenDto: UpdateCitizenDto) {
     const citizen = await this.findOneEntity(id);
     if (updateCitizenDto.direccion !== undefined) {
@@ -100,6 +110,14 @@ export class CitizensService {
       if (updateCitizenDto.telefono !== undefined) citizen.person.phone = updateCitizenDto.telefono;
       await this.personRepository.save(citizen.person);
     }
+    
+    if (updateCitizenDto.weatherAlertsEnabled !== undefined) {
+      citizen.weatherAlertsEnabled = updateCitizenDto.weatherAlertsEnabled;
+    }
+    if (updateCitizenDto.habitualTravelTime !== undefined) {
+      citizen.habitualTravelTime = updateCitizenDto.habitualTravelTime;
+    }
+
     const saved = await this.citizenRepository.save(citizen);
     return this.mapCitizenToResponse(await this.findOneEntity(saved.id));
   }

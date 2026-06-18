@@ -252,7 +252,108 @@ const ProfilePage = () => {
             </div>
           )}
         </div>
+
+        {/* Weather Alerts Preferences (Citizens Only) */}
+        {user?.roles?.some(r => r.name === 'Ciudadano') && (
+          <WeatherAlertsCard userId={user.id} />
+        )}
       </main>
+    </div>
+  )
+}
+
+// Sub-component for Weather Alerts
+function WeatherAlertsCard({ userId }: { userId: string }) {
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [citizenId, setCitizenId] = useState<string | null>(null)
+  const [enabled, setEnabled] = useState(false)
+  const [time, setTime] = useState('07:00')
+  const [msg, setMsg] = useState<{type: 'success'|'error', text: string} | null>(null)
+
+  useState(() => {
+    import('../../services/citizensService').then(({ findCitizenByUserId }) => {
+      findCitizenByUserId(userId).then(citizen => {
+        if (citizen) {
+          setCitizenId(citizen.id)
+          setEnabled(citizen.weatherAlertsEnabled ?? false)
+          setTime(citizen.habitualTravelTime ?? '07:00')
+        }
+        setLoading(false)
+      }).catch(() => setLoading(false))
+    })
+  })
+
+  const handleSave = async () => {
+    if (!citizenId) return
+    setSaving(true)
+    setMsg(null)
+    try {
+      const { updateWeatherAlerts } = await import('../../services/citizensService')
+      await updateWeatherAlerts(citizenId, { weatherAlertsEnabled: enabled, habitualTravelTime: time })
+      setMsg({ type: 'success', text: 'Preferencias guardadas. Recibirás alertas antes de tu viaje.' })
+    } catch {
+      setMsg({ type: 'error', text: 'Error al guardar preferencias.' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return null; // Don't show if loading
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 mt-6">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+        Preferencias de Viaje
+      </h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+        Configura alertas automáticas del clima para planificar tu ruta
+      </p>
+
+      {msg && (
+        <div className={`mb-4 p-3 rounded-lg border text-sm ${msg.type === 'success' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+          {msg.text}
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            checked={enabled}
+            onChange={(e) => setEnabled(e.target.checked)}
+          />
+          <div>
+            <p className="font-medium text-gray-900 dark:text-gray-100">Recibir alertas de clima</p>
+            <p className="text-xs text-gray-500">Te enviaremos un correo y mensaje de Slack si se pronostica lluvia</p>
+          </div>
+        </label>
+
+        {enabled && (
+          <div className="pl-8 pt-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              ¿A qué hora sueles viajar en la mañana?
+            </label>
+            <input
+              type="time"
+              className="px-3 py-2 border rounded-lg bg-gray-50 dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+            <p className="text-xs text-gray-500 mt-1">Evaluaremos el clima unas horas antes de tu viaje.</p>
+          </div>
+        )}
+
+        <Button
+          onClick={handleSave}
+          isLoading={saving}
+          disabled={!citizenId}
+          className="mt-4"
+        >
+          Guardar Preferencias
+        </Button>
+      </div>
     </div>
   )
 }
