@@ -322,10 +322,26 @@ export class BusesService {
     const ticketRepo = this.ticketRepository;
 
     const routes = await routeRepo.find({ relations: ['nodes', 'nodes.busStop'] });
-    const buses = await this.busRepository.find({ relations: ['gps'] });
+    let buses = await this.busRepository.find({ relations: ['gps'] });
 
-    if (routes.length === 0 || buses.length === 0) {
-      return { message: 'No se encontraron rutas o buses en la base de datos para simular.', simulated: 0 };
+    if (routes.length === 0) {
+      return { message: 'No se encontraron rutas en la base de datos para simular.', simulated: 0 };
+    }
+
+    // Asegurar que existan al menos 4 buses en la base de datos para simular una flota viva
+    const simulatedPlates = ['SIM-001', 'SIM-002', 'SIM-003', 'SIM-004'];
+    for (const plate of simulatedPlates) {
+      const exists = buses.some(b => b.placa === plate);
+      if (!exists) {
+        const newBus = this.busRepository.create({
+          placa: plate,
+          modelo: 'Mercedes-Benz Sprinter (Simulado)',
+          capacidad: 40,
+          estado: 'activo'
+        });
+        const savedBus = await this.busRepository.save(newBus);
+        buses.push(savedBus);
+      }
     }
 
     const types = ['Tráfico pesado', 'Accidente de tránsito', 'Falla mecánica', 'Manifestación', 'Desvío de ruta'];
@@ -493,6 +509,37 @@ export class BusesService {
       .delete()
       .where("tolerancia_minutos = :tol", { tol: 999 })
       .execute();
+
+    // 4. Eliminar buses simulados de la base de datos (SIM-001, SIM-002, etc.)
+    const simulatedBuses = await this.busRepository
+      .createQueryBuilder('b')
+      .where("b.placa LIKE :pattern", { pattern: 'SIM-%' })
+      .getMany();
+      
+    if (simulatedBuses.length > 0) {
+      const busIds = simulatedBuses.map(b => b.id);
+      
+      // Eliminar registros de GPS vinculados
+      await this.dataSource.getRepository(Gps)
+        .createQueryBuilder()
+        .delete()
+        .where("busId IN (:...busIds)", { busIds })
+        .execute();
+
+      // Eliminar programaciones remanentes asociadas a estos buses
+      await this.scheduleRepository
+        .createQueryBuilder()
+        .delete()
+        .where("busId IN (:...busIds)", { busIds })
+        .execute();
+        
+      // Eliminar los buses
+      await this.busRepository
+        .createQueryBuilder()
+        .delete()
+        .where("id IN (:...busIds)", { busIds })
+        .execute();
+    }
       
     return { message: 'Simulación de flota y tráfico restablecida con éxito.' };
   }
